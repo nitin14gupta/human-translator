@@ -79,5 +79,44 @@
     "de": "Alemán",
     "zh": "Chino",
     "ja": "Japonés"
+  },
+  "error": {
+    "title": "Algo salió mal",
+    "message": "Estamos teniendo problemas para procesar su solicitud. Por favor, inténtelo de nuevo más tarde.",
+    "code": "Código de error",
+    "whatHappened": "¿Qué podría haber sucedido?",
+    "serverIssue": "Nuestro servidor podría estar experimentando problemas",
+    "connectionIssue": "Su conexión podría ser inestable",
+    "timeoutIssue": "La solicitud podría haber agotado el tiempo de espera",
+    "retry": "Intentar de nuevo",
+    "goHome": "Ir al inicio",
+    "supportInfo": "Si el problema persiste, contacte a nuestro equipo de soporte."
+  },
+  "noInternet": {
+    "title": "Sin conexión a Internet",
+    "message": "Por favor, compruebe su conexión a Internet e inténtelo de nuevo",
+    "tips": "Consejos de solución de problemas:",
+    "checkWifi": "Compruebe su conexión Wi-Fi",
+    "checkData": "Asegúrese de que los datos móviles estén activados",
+    "restartDevice": "Reinicie su dispositivo",
+    "retry": "Reintentar conexión",
+    "offlineNotice": "Algunas funciones pueden estar disponibles sin conexión"
+  },
+  "maintenance": {
+    "title": "Mantenimiento programado",
+    "message": "Actualmente estamos realizando un mantenimiento programado para mejorar nuestro servicio",
+    "scheduledTime": "Finalización estimada",
+    "estimatedTime": "en aproximadamente {{time}}",
+    "upgradeInfo": "Estamos actualizando nuestros sistemas para servirle mejor",
+    "apologyMessage": "Disculpe las molestias",
+    "checkStatus": "Comprobar estado",
+    "tryAgain": "Intentar más tarde"
+  },
+  "session": {
+    "expired": "Sesión expirada",
+    "message": "Su sesión ha expirado debido a inactividad",
+    "securityMessage": "Por su seguridad, se ha cerrado su sesión después de un período de inactividad",
+    "loginAgain": "Por favor, inicie sesión de nuevo para continuar",
+    "loginButton": "Iniciar sesión"
   }
 } 

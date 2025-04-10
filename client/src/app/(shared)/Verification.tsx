@@ -123,8 +123,8 @@ export default function Verification() {
             {
               text: t("common.ok", "OK"),
               onPress: () => {
-                // Store user role and navigate to the appropriate tab
-                router.replace(isNeedTranslator ? "/(tabs)/traveler" : "/(tabs)/translator");
+                // Store user role and navigate to the appropriate info screen
+                router.replace(isNeedTranslator ? "/(shared)/travelerInfo" : "/(shared)/translatorInfo");
               }
             }
           ]
@@ -143,7 +143,7 @@ export default function Verification() {
           ? t("roleSelection.needTranslator", "traveler") 
           : t("roleSelection.offerTranslation", "translator");
           
-        // Show success alert and navigate to the appropriate tab based on role
+        // Show success alert and navigate to the appropriate info screen based on role
         Alert.alert(
           t("verification.successTitle", "Success"), 
           t("verification.successMessage", "Verification successful! You've been registered as a {{role}}.", { 
@@ -153,7 +153,7 @@ export default function Verification() {
             {
               text: t("common.ok", "OK"),
               onPress: () => {
-                router.replace(isNeedTranslator ? "/(tabs)/traveler" : "/(tabs)/translator");
+                router.replace(isNeedTranslator ? "/(shared)/travelerInfo" : "/(shared)/translatorInfo");
               }
             }
           ]
@@ -177,7 +177,7 @@ export default function Verification() {
             {
               text: t("common.ok", "OK"),
               onPress: () => {
-                router.replace(isNeedTranslator ? "/(tabs)/traveler" : "/(tabs)/translator");
+                router.replace(isNeedTranslator ? "/(shared)/travelerInfo" : "/(shared)/translatorInfo");
               }
             }
           ]

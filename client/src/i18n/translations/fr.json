@@ -79,5 +79,44 @@
     "de": "Allemand",
     "zh": "Chinois",
     "ja": "Japonais"
+  },
+  "error": {
+    "title": "Une erreur est survenue",
+    "message": "Nous rencontrons des difficultés à traiter votre demande. Veuillez réessayer plus tard.",
+    "code": "Code d'erreur",
+    "whatHappened": "Que s'est-il passé ?",
+    "serverIssue": "Notre serveur rencontre peut-être des problèmes",
+    "connectionIssue": "Votre connexion est peut-être instable",
+    "timeoutIssue": "La requête a peut-être expiré",
+    "retry": "Réessayer",
+    "goHome": "Retour à l'accueil",
+    "supportInfo": "Si le problème persiste, contactez notre équipe de support."
+  },
+  "noInternet": {
+    "title": "Pas de connexion Internet",
+    "message": "Veuillez vérifier votre connexion Internet et réessayer",
+    "tips": "Conseils de dépannage :",
+    "checkWifi": "Vérifiez votre connexion Wi-Fi",
+    "checkData": "Assurez-vous que les données mobiles sont activées",
+    "restartDevice": "Redémarrez votre appareil",
+    "retry": "Réessayer la connexion",
+    "offlineNotice": "Certaines fonctionnalités peuvent être disponibles hors ligne"
+  },
+  "maintenance": {
+    "title": "Maintenance planifiée",
+    "message": "Nous effectuons actuellement une maintenance planifiée pour améliorer notre service",
+    "scheduledTime": "Fin estimée",
+    "estimatedTime": "dans environ {{time}}",
+    "upgradeInfo": "Nous mettons à niveau nos systèmes pour mieux vous servir",
+    "apologyMessage": "Nous nous excusons pour tout inconvénient",
+    "checkStatus": "Vérifier l'état",
+    "tryAgain": "Réessayer plus tard"
+  },
+  "session": {
+    "expired": "Session expirée",
+    "message": "Votre session a expiré en raison d'inactivité",
+    "securityMessage": "Pour votre sécurité, vous avez été déconnecté après une période d'inactivité",
+    "loginAgain": "Veuillez vous reconnecter pour continuer",
+    "loginButton": "Se connecter"
   }
 } 

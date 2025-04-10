@@ -95,5 +95,44 @@
       "de": "German",
       "zh": "Chinese",
       "ja": "Japanese"
+    },
+    "error": {
+      "title": "Something went wrong",
+      "message": "We're having trouble processing your request. Please try again later.",
+      "code": "Error code",
+      "whatHappened": "What might have happened?",
+      "serverIssue": "Our server might be experiencing issues",
+      "connectionIssue": "Your connection might be unstable",
+      "timeoutIssue": "The request might have timed out",
+      "retry": "Try Again",
+      "goHome": "Go to Home",
+      "supportInfo": "If the problem persists, contact our support team."
+    },
+    "noInternet": {
+      "title": "No Internet Connection",
+      "message": "Please check your internet connection and try again",
+      "tips": "Troubleshooting Tips:",
+      "checkWifi": "Check your Wi-Fi connection",
+      "checkData": "Make sure mobile data is turned on",
+      "restartDevice": "Restart your device",
+      "retry": "Retry Connection",
+      "offlineNotice": "Some features may be available offline"
+    },
+    "maintenance": {
+      "title": "Scheduled Maintenance",
+      "message": "We're currently undergoing scheduled maintenance to improve our service",
+      "scheduledTime": "Estimated completion",
+      "estimatedTime": "in about {{time}}",
+      "upgradeInfo": "We're upgrading our systems to serve you better",
+      "apologyMessage": "We apologize for any inconvenience",
+      "checkStatus": "Check Status",
+      "tryAgain": "Try Again Later"
+    },
+    "session": {
+      "expired": "Session Expired",
+      "message": "Your session has expired due to inactivity",
+      "securityMessage": "For your security, you've been logged out after a period of inactivity",
+      "loginAgain": "Please log in again to continue",
+      "loginButton": "Log In"
     }
   } 
