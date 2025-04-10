@@ -1,0 +1,22 @@
+{
+  "languageSelection": {
+    "title": "选择您的首选语言",
+    "subtitle": "您可以稍后在设置中更改此项。",
+    "continueButton": "继续使用{{language}}",
+    "loading": "加载中..."
+  },
+  "roleSelection": {
+    "title": "您是旅行者还是译员？",
+    "subtitle": "选择您的角色以定制您的体验。",
+    "needTranslator": "我需要译员",
+    "offerTranslation": "我提供翻译服务"
+  },
+  "languages": {
+    "en": "英语",
+    "es": "西班牙语",
+    "fr": "法语",
+    "de": "德语",
+    "zh": "中文",
+    "ja": "日语"
+  }
+} 

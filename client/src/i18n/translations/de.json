@@ -1,0 +1,22 @@
+{
+  "languageSelection": {
+    "title": "Wählen Sie Ihre bevorzugte Sprache",
+    "subtitle": "Sie können dies später in den Einstellungen ändern.",
+    "continueButton": "Fortfahren in {{language}}",
+    "loading": "Wird geladen..."
+  },
+  "roleSelection": {
+    "title": "Sind Sie Reisender oder Übersetzer?",
+    "subtitle": "Wählen Sie Ihre Rolle, um Ihre Erfahrung anzupassen.",
+    "needTranslator": "Ich brauche einen Übersetzer",
+    "offerTranslation": "Ich biete Übersetzungsdienste an"
+  },
+  "languages": {
+    "en": "Englisch",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "de": "Deutsch",
+    "zh": "Chinesisch",
+    "ja": "Japanisch"
+  }
+} 

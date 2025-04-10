@@ -1,0 +1,44 @@
+{
+  "languageSelection": {
+    "title": "Choose Your Preferred Language",
+    "subtitle": "You can change this later in settings.",
+    "continueButton": "Continue in {{language}}",
+    "loading": "Loading..."
+  },
+  "roleSelection": {
+    "title": "Are You a Traveler or Translator?",
+    "subtitle": "Select your role to tailor your experience.",
+    "needTranslator": "I Need a Translator",
+    "offerTranslation": "I Offer Translation Services"
+  },
+  "authentication": {
+    "title": "Create Your Account",
+    "subtitle": "Join our translation community",
+    "phoneNumberPlaceholder": "Phone Number",
+    "privacyNotice": "We'll never share your details without permission",
+    "signUpButton": "Sign Up Securely",
+    "orContinueWith": "Or continue with",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "termsPrefix": "By signing up, you agree to our",
+    "terms": "Terms",
+    "andConnector": "and",
+    "privacyPolicy": "Privacy Policy",
+    "appName": "Human Translator"
+  },
+  "verification": {
+    "title": "Verify Your Identity",
+    "subtitle": "We've sent a 6-digit code to {{phoneNumber}}",
+    "resendCode": "Didn't receive the code? Resend in {{timer}}",
+    "verifyButton": "Verify",
+    "secureNotice": "Your verification is secure and encrypted"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "zh": "Chinese",
+    "ja": "Japanese"
+  }
+} 

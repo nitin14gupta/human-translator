@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, ScrollView, SafeAreaView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, Image, ScrollView, SafeAreaView, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { changeLanguage, getLanguage } from "../../services/languageService";
 
 // Language option type
 interface LanguageOption {
@@ -13,36 +15,81 @@ interface LanguageOption {
 
 export default function LanguageSelection() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
+  const [isLoading, setIsLoading] = useState(false);
   
   // Define available languages
   const languages: LanguageOption[] = [
-    { key: 'en', name: 'English', localName: 'English (US)', flag: '🇺🇸' },
-    { key: 'es', name: 'Spanish', localName: 'Español', flag: '🇪🇸' },
-    { key: 'fr', name: 'French', localName: 'Français', flag: '🇫🇷' },
-    { key: 'de', name: 'German', localName: 'Deutsch', flag: '🇩🇪' },
-    { key: 'zh', name: 'Chinese', localName: '中文', flag: '🇨🇳' },
-    { key: 'ja', name: 'Japanese', localName: '日本語', flag: '🇯🇵' },
+    { key: 'en', name: t('languages.en'), localName: 'English (US)', flag: '🇺🇸' },
+    { key: 'es', name: t('languages.es'), localName: 'Español', flag: '🇪🇸' },
+    { key: 'fr', name: t('languages.fr'), localName: 'Français', flag: '🇫🇷' },
+    { key: 'de', name: t('languages.de'), localName: 'Deutsch', flag: '🇩🇪' },
+    { key: 'zh', name: t('languages.zh'), localName: '中文', flag: '🇨🇳' },
+    { key: 'ja', name: t('languages.ja'), localName: '日本語', flag: '🇯🇵' },
   ];
   
   // State to track selected language
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [selectedLanguage, setSelectedLanguage] = useState(i18n.language || 'en');
+  
+  // Load the current language on component mount
+  useEffect(() => {
+    const loadLanguage = async () => {
+      setIsLoading(true);
+      try {
+        const currentLang = await getLanguage();
+        setSelectedLanguage(currentLang);
+      } catch (error) {
+        console.error("Error loading language:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadLanguage();
+  }, []);
   
   // Handle language selection
-  const selectLanguage = (langKey: string) => {
+  const selectLanguage = async (langKey: string) => {
+    setIsLoading(true);
     setSelectedLanguage(langKey);
+    
+    try {
+      await changeLanguage(langKey);
+    } catch (error) {
+      console.error("Error changing language:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Continue with selected language
-  const continueWithLanguage = () => {
-    // Here you would save the selected language and navigate
-    // For now, just navigate to the next screen
-    router.push('/');
+  const continueWithLanguage = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Save the selected language and update both locally and on server
+      await changeLanguage(selectedLanguage);
+      
+      // Navigate to the next screen
+      router.push('/roleSelection');
+    } catch (error) {
+      console.error("Error saving language preference:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  // Navigate to get started
-  const getStarted = () => {
-    router.push('/');
-  };
+  // If loading, show a loading indicator
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-neutral-white items-center justify-center">
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text className="mt-4 font-body text-neutral-gray-600">
+          {t('languageSelection.loading')}
+        </Text>
+      </SafeAreaView>
+    );
+  }
   
   return (
     <SafeAreaView className="flex-1 bg-neutral-white">
@@ -57,10 +104,10 @@ export default function LanguageSelection() {
         {/* Header */}
         <View className="mb-6">
           <Text className="text-3xl font-heading font-bold text-neutral-gray-800 text-center mb-2">
-            Choose Your Preferred Language
+            {t('languageSelection.title')}
           </Text>
           <Text className="text-base font-body text-neutral-gray-600 text-center">
-            You can change this later in settings.
+            {t('languageSelection.subtitle')}
           </Text>
         </View>
         
@@ -105,30 +152,18 @@ export default function LanguageSelection() {
         </View>
         
         {/* Buttons */}
-        <View className="mt-auto">
+        <View className="mt-auto mb-8">
           <TouchableOpacity 
             className="bg-primary py-4 rounded-xl items-center mb-3"
             onPress={continueWithLanguage}
+            disabled={isLoading}
           >
             <Text className="text-white font-poppins font-semibold text-base">
-              Continue in {languages.find(l => l.key === selectedLanguage)?.name}
+              {t('languageSelection.continueButton', { 
+                language: languages.find(l => l.key === selectedLanguage)?.name 
+              })}
             </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            className="border border-neutral-gray-300 py-4 rounded-xl items-center flex-row justify-center"
-            onPress={getStarted}
-          >
-            <Text className="font-poppins font-medium text-neutral-gray-800 mr-2">
-              Get Started
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color="#343A40" />
-          </TouchableOpacity>
-        </View>
-        
-        {/* Bottom Indicator */}
-        <View className="items-center mt-6">
-          <View className="w-10 h-1 bg-neutral-gray-400 rounded-full" />
         </View>
       </View>
     </SafeAreaView>
