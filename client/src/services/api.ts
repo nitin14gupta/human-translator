@@ -1,6 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-const API_URL = 'http://localhost:8000'; // Change this to your server URL
+// In React Native, 'localhost' refers to the device itself, not your computer
+// For Android emulator, use 10.0.2.2 to reach your computer's localhost
+// For iOS simulator, localhost works
+// For physical devices, use your computer's actual IP address on the network
+const getApiBaseUrl = () => {
+  if (Platform.OS === 'android') {
+    // Android emulator special IP for host machine
+    return 'http://10.0.2.2:8000';
+  } else if (Platform.OS === 'ios') {
+    // iOS simulator can use localhost
+    return 'http://localhost:8000';
+  } else {
+    // For web or other platforms
+    return 'http://localhost:8000';
+  }
+};
+
+const API_URL = getApiBaseUrl();
 
 // Helper function to handle responses
 const handleResponse = async (response: Response) => {

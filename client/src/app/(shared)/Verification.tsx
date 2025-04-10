@@ -22,6 +22,8 @@ export default function Verification() {
   const params = useLocalSearchParams();
   const phoneNumber = params.phoneNumber as string;
   const isNeedTranslator = params.isNeedTranslator === "true";
+  const isTestMode = params.testMode === "true";
+  const testCode = "123456"; // Default test code
   
   const [isLoading, setIsLoading] = useState(false);
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -30,6 +32,17 @@ export default function Verification() {
   
   // Refs for input fields
   const inputRefs = useRef<Array<TextInput | null>>([]);
+
+  // Display test code alert
+  useEffect(() => {
+    if (isTestMode) {
+      Alert.alert(
+        "Test Mode",
+        `Use the code: ${testCode}`,
+        [{ text: "OK" }]
+      );
+    }
+  }, [isTestMode]);
 
   // Set up timer for resend code
   useEffect(() => {
@@ -95,27 +108,60 @@ export default function Verification() {
 
     setIsLoading(true);
     try {
-      // Call the API to verify the code
-      const response = await verifyCode(
-        phoneNumber,
-        fullCode,
-        isNeedTranslator,
-        t("languages.en") // Use current language
-      );
-      
-      // Show success alert and navigate to home
-      Alert.alert(
-        "Success", 
-        `Verification successful! You've been registered as a ${isNeedTranslator ? "traveler" : "translator"}.`,
-        [
-          {
-            text: "OK",
-            onPress: () => router.push("/(tabs)")
-          }
-        ]
-      );
+      if (isTestMode && fullCode === testCode) {
+        // In test mode, just simulate a successful verification
+        // Show success alert and navigate to home
+        Alert.alert(
+          "Success (Test Mode)", 
+          `Verification successful! You've been registered as a ${isNeedTranslator ? "traveler" : "translator"}.`,
+          [
+            {
+              text: "OK",
+              onPress: () => router.push("/(tabs)")
+            }
+          ]
+        );
+      } else {
+        // Call the API to verify the code
+        const response = await verifyCode(
+          phoneNumber,
+          fullCode,
+          isNeedTranslator,
+          t("languages.en") // Use current language
+        );
+        
+        // Show success alert and navigate to home
+        Alert.alert(
+          "Success", 
+          `Verification successful! You've been registered as a ${isNeedTranslator ? "traveler" : "translator"}.`,
+          [
+            {
+              text: "OK",
+              onPress: () => router.push("/(tabs)")
+            }
+          ]
+        );
+      }
     } catch (error) {
       console.error("Error verifying code:", error);
+      
+      if (isTestMode) {
+        // In test mode, check if the code matches our test code
+        if (fullCode === testCode) {
+          Alert.alert(
+            "Success (Test Mode)", 
+            `Verification successful! You've been registered as a ${isNeedTranslator ? "traveler" : "translator"}.`,
+            [
+              {
+                text: "OK",
+                onPress: () => router.push("/(tabs)")
+              }
+            ]
+          );
+          return;
+        }
+      }
+      
       Alert.alert("Error", "Failed to verify code. Please try again.");
     } finally {
       setIsLoading(false);
@@ -128,21 +174,41 @@ export default function Verification() {
     
     setIsLoading(true);
     try {
-      // Call the API to resend the code
-      await sendVerificationCode(phoneNumber);
-      
-      // Reset timer and code
-      setTimer(30);
-      setCanResend(false);
-      setCode(["", "", "", "", "", ""]);
-      
-      // Focus on first input
-      inputRefs.current[0]?.focus();
-      
-      Alert.alert("Code Resent", "A new verification code has been sent.");
+      if (isTestMode) {
+        // In test mode, just reset the timer and remind of the test code
+        setTimer(30);
+        setCanResend(false);
+        setCode(["", "", "", "", "", ""]);
+        
+        // Focus on first input
+        inputRefs.current[0]?.focus();
+        
+        Alert.alert("Test Code Resent", `Remember to use the code: ${testCode}`);
+      } else {
+        // Call the API to resend the code
+        await sendVerificationCode(phoneNumber);
+        
+        // Reset timer and code
+        setTimer(30);
+        setCanResend(false);
+        setCode(["", "", "", "", "", ""]);
+        
+        // Focus on first input
+        inputRefs.current[0]?.focus();
+        
+        Alert.alert("Code Resent", "A new verification code has been sent.");
+      }
     } catch (error) {
       console.error("Error resending code:", error);
-      Alert.alert("Error", "Failed to resend code. Please try again.");
+      
+      if (isTestMode) {
+        // In test mode, handle failure gracefully
+        setTimer(30);
+        setCanResend(false);
+        Alert.alert("Test Code Reminder", `Use the code: ${testCode}`);
+      } else {
+        Alert.alert("Error", "Failed to resend code. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
