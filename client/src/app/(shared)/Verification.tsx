@@ -110,15 +110,22 @@ export default function Verification() {
     try {
       if (isTestMode && fullCode === testCode) {
         // In test mode, just simulate a successful verification
+        const roleText = isNeedTranslator 
+          ? t("roleSelection.needTranslator", "traveler") 
+          : t("roleSelection.offerTranslation", "translator");
+          
         Alert.alert(
           t("verification.successTitle", "Success (Test Mode)"), 
           t("verification.successMessage", "Verification successful! You've been registered as a {{role}}.", { 
-            role: isNeedTranslator ? t("roleSelection.needTranslator", "traveler") : t("roleSelection.offerTranslation", "translator") 
+            role: roleText
           }),
           [
             {
               text: t("common.ok", "OK"),
-              onPress: () => router.push("/(tabs)")
+              onPress: () => {
+                // Store user role and navigate to the appropriate tab
+                router.replace(isNeedTranslator ? "/(tabs)/traveler" : "/(tabs)/translator");
+              }
             }
           ]
         );
@@ -131,16 +138,23 @@ export default function Verification() {
           i18n.language // Use current language from i18n
         );
         
-        // Show success alert and navigate to home
+        // Get the role text for the success message
+        const roleText = isNeedTranslator 
+          ? t("roleSelection.needTranslator", "traveler") 
+          : t("roleSelection.offerTranslation", "translator");
+          
+        // Show success alert and navigate to the appropriate tab based on role
         Alert.alert(
           t("verification.successTitle", "Success"), 
           t("verification.successMessage", "Verification successful! You've been registered as a {{role}}.", { 
-            role: isNeedTranslator ? t("roleSelection.needTranslator", "traveler") : t("roleSelection.offerTranslation", "translator") 
+            role: roleText
           }),
           [
             {
               text: t("common.ok", "OK"),
-              onPress: () => router.push("/(tabs)")
+              onPress: () => {
+                router.replace(isNeedTranslator ? "/(tabs)/traveler" : "/(tabs)/translator");
+              }
             }
           ]
         );
@@ -150,15 +164,21 @@ export default function Verification() {
       
       if (isTestMode && fullCode === testCode) {
         // In test mode, if code matches, allow verification despite API error
+        const roleText = isNeedTranslator 
+          ? t("roleSelection.needTranslator", "traveler") 
+          : t("roleSelection.offerTranslation", "translator");
+          
         Alert.alert(
           t("verification.successTitle", "Success (Test Mode)"), 
           t("verification.successMessage", "Verification successful! You've been registered as a {{role}}.", { 
-            role: isNeedTranslator ? t("roleSelection.needTranslator", "traveler") : t("roleSelection.offerTranslation", "translator") 
+            role: roleText
           }),
           [
             {
               text: t("common.ok", "OK"),
-              onPress: () => router.push("/(tabs)")
+              onPress: () => {
+                router.replace(isNeedTranslator ? "/(tabs)/traveler" : "/(tabs)/translator");
+              }
             }
           ]
         );
@@ -255,6 +275,18 @@ export default function Verification() {
             <Text className="text-base font-body text-neutral-gray-600 text-center">
               {t("verification.subtitle", { phoneNumber })}
             </Text>
+          </View>
+
+          {/* Role Indicator */}
+          <View className="w-full mb-4 items-center">
+            <View className={`px-4 py-2 rounded-full ${isNeedTranslator ? 'bg-blue-100' : 'bg-green-100'}`}>
+              <Text className={`text-sm font-medium ${isNeedTranslator ? 'text-blue-800' : 'text-green-800'}`}>
+                {isNeedTranslator 
+                  ? t("roleSelection.needTranslator", "I Need a Translator")
+                  : t("roleSelection.offerTranslation", "I Offer Translation Services")
+                }
+              </Text>
+            </View>
           </View>
 
           {/* Verification Code Inputs */}

@@ -1,15 +1,23 @@
 import { useTranslation } from "react-i18next";
-import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { Text, View, StyleSheet, ScrollView, TouchableOpacity, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function HomeScreen() {
+export default function TravelerHomeScreen() {
   const { t } = useTranslation();
 
   // Mock data for demonstration
   const nearbyTranslators = [
-    { id: 1, name: "Emma Chen", language: "Chinese", rating: 4.8, distance: "0.5 km" },
-    { id: 2, name: "Miguel Lopez", language: "Spanish", rating: 4.9, distance: "1.2 km" },
-    { id: 3, name: "Yuki Tanaka", language: "Japanese", rating: 4.7, distance: "2.0 km" },
+    { id: 1, name: "Emma Chen", language: "Chinese", rating: 4.8, distance: "0.5 km", online: true },
+    { id: 2, name: "Miguel Lopez", language: "Spanish", rating: 4.9, distance: "1.2 km", online: true },
+    { id: 3, name: "Yuki Tanaka", language: "Japanese", rating: 4.7, distance: "2.0 km", online: false },
+    { id: 4, name: "Hans Mueller", language: "German", rating: 4.6, distance: "2.5 km", online: true },
+  ];
+
+  // Mock popular destinations
+  const popularDestinations = [
+    { id: 1, name: "Tokyo, Japan", translators: 28 },
+    { id: 2, name: "Paris, France", translators: 22 },
+    { id: 3, name: "Barcelona, Spain", translators: 19 },
   ];
 
   return (
@@ -22,15 +30,25 @@ export default function HomeScreen() {
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color="#666" />
-          <Text style={styles.searchPlaceholder}>{t("home.searchPlaceholder")}</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t("home.searchPlaceholder")}
+            placeholderTextColor="#999"
+          />
         </View>
         <TouchableOpacity style={styles.filterButton}>
           <Ionicons name="options" size={20} color="#007BFF" />
         </TouchableOpacity>
       </View>
 
+      {/* Nearby Translators Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("home.nearbyTranslators")}</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t("home.nearbyTranslators")}</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
         
         {nearbyTranslators.map(translator => (
           <TouchableOpacity key={translator.id} style={styles.translatorCard}>
@@ -38,7 +56,11 @@ export default function HomeScreen() {
               <Text style={styles.translatorInitial}>{translator.name[0]}</Text>
             </View>
             <View style={styles.translatorInfo}>
-              <Text style={styles.translatorName}>{translator.name}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.translatorName}>{translator.name}</Text>
+                <View style={[styles.statusIndicator, 
+                  translator.online ? styles.statusOnline : styles.statusOffline]} />
+              </View>
               <Text style={styles.translatorLanguage}>{translator.language}</Text>
               <View style={styles.translatorMeta}>
                 <Ionicons name="star" size={14} color="#FFD700" />
@@ -51,6 +73,25 @@ export default function HomeScreen() {
         ))}
       </View>
 
+      {/* Popular Destinations */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Popular Destinations</Text>
+        
+        {popularDestinations.map(destination => (
+          <TouchableOpacity key={destination.id} style={styles.destinationCard}>
+            <Ionicons name="location" size={24} color="#007BFF" />
+            <View style={styles.destinationInfo}>
+              <Text style={styles.destinationName}>{destination.name}</Text>
+              <Text style={styles.destinationMeta}>
+                {destination.translators} translators available
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Quick Actions */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t("home.quickActions")}</Text>
         <View style={styles.quickActions}>
@@ -70,9 +111,9 @@ export default function HomeScreen() {
           
           <TouchableOpacity style={styles.actionButton}>
             <View style={[styles.actionIcon, { backgroundColor: '#2196F3' }]}>
-              <Ionicons name="settings" size={24} color="white" />
+              <Ionicons name="map" size={24} color="white" />
             </View>
-            <Text style={styles.actionText}>{t("home.settings")}</Text>
+            <Text style={styles.actionText}>Find Nearby</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -119,9 +160,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  searchPlaceholder: {
-    color: "#999",
+  searchInput: {
+    flex: 1,
     marginLeft: 10,
+    color: "#333",
   },
   filterButton: {
     backgroundColor: "white",
@@ -148,10 +190,20 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 15,
+  },
+  seeAllText: {
+    color: "#007BFF",
+    fontSize: 14,
   },
   translatorCard: {
     flexDirection: "row",
@@ -177,10 +229,25 @@ const styles = StyleSheet.create({
   translatorInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   translatorName: {
     fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 2,
+    marginRight: 8,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusOnline: {
+    backgroundColor: "#4CAF50",
+  },
+  statusOffline: {
+    backgroundColor: "#bbb",
   },
   translatorLanguage: {
     fontSize: 14,
@@ -200,6 +267,26 @@ const styles = StyleSheet.create({
   translatorDistance: {
     fontSize: 14,
     color: "#999",
+  },
+  destinationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  destinationInfo: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  destinationName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+  destinationMeta: {
+    fontSize: 14,
+    color: "#666",
   },
   quickActions: {
     flexDirection: "row",
@@ -221,4 +308,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
-});
+}); 
