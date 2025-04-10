@@ -31,7 +31,10 @@ export default function Authentication() {
   // Handle sign up
   const handleSignUp = async () => {
     if (!phoneNumber || phoneNumber.length < 7) {
-      Alert.alert("Invalid Phone Number", "Please enter a valid phone number");
+      Alert.alert(
+        t("authentication.invalidNumber", "Invalid Phone Number"), 
+        t("authentication.enterValidNumber", "Please enter a valid phone number")
+      );
       return;
     }
 
@@ -54,15 +57,15 @@ export default function Authentication() {
       
       // For testing: Ask if user wants to proceed anyway with a test code
       Alert.alert(
-        "Network Error",
-        "Could not connect to the server. Would you like to proceed with a test code?",
+        t("authentication.networkError", "Network Error"),
+        t("authentication.testModePrompt", "Could not connect to the server. Would you like to proceed with a test code?"),
         [
           {
-            text: "Cancel",
+            text: t("common.cancel", "Cancel"),
             style: "cancel"
           },
           {
-            text: "Use Test Code",
+            text: t("authentication.useTestCode", "Use Test Code"),
             onPress: () => {
               // For testing - hardcoded OTP: 123456
               console.log("Using test code: 123456");
@@ -87,26 +90,26 @@ export default function Authentication() {
   // Handle continue with Google
   const handleGoogleSignIn = () => {
     Alert.alert(
-      "Not Implemented",
-      "Google Sign-In is not implemented in this demo."
+      t("authentication.notImplemented", "Not Implemented"),
+      t("authentication.googleNotImplemented", "Google Sign-In is not implemented in this demo.")
     );
   };
 
   // Handle continue with Apple
   const handleAppleSignIn = () => {
     Alert.alert(
-      "Not Implemented",
-      "Apple Sign-In is not implemented in this demo."
+      t("authentication.notImplemented", "Not Implemented"),
+      t("authentication.appleNotImplemented", "Apple Sign-In is not implemented in this demo.")
     );
   };
 
   // Handle terms and privacy links
   const handleTermsPress = () => {
-    // Navigate to terms page
+    router.push("/(shared)/terms");
   };
 
   const handlePrivacyPress = () => {
-    // Navigate to privacy policy page
+    router.push("/(shared)/privacyPolicy");
   };
 
   // If loading, show a loading indicator

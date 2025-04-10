@@ -11,6 +11,67 @@
     "needTranslator": "Necesito un traductor",
     "offerTranslation": "Ofrezco servicios de traducción"
   },
+  "authentication": {
+    "title": "Cree su cuenta",
+    "subtitle": "Únase a nuestra comunidad de traducción",
+    "phoneNumberPlaceholder": "Número de teléfono",
+    "privacyNotice": "Nunca compartiremos sus datos sin permiso",
+    "signUpButton": "Registrarse de forma segura",
+    "orContinueWith": "O continuar con",
+    "continueWithGoogle": "Continuar con Google",
+    "continueWithApple": "Continuar con Apple",
+    "termsPrefix": "Al registrarse, acepta nuestros",
+    "terms": "Términos",
+    "andConnector": "y",
+    "privacyPolicy": "Política de privacidad",
+    "appName": "Traductor Humano",
+    "invalidNumber": "Número de teléfono no válido",
+    "enterValidNumber": "Por favor, introduzca un número de teléfono válido",
+    "networkError": "Error de red",
+    "testModePrompt": "No se pudo conectar al servidor. ¿Desea continuar con un código de prueba?",
+    "useTestCode": "Usar código de prueba",
+    "notImplemented": "No implementado",
+    "googleNotImplemented": "El inicio de sesión con Google no está implementado en esta demo.",
+    "appleNotImplemented": "El inicio de sesión con Apple no está implementado en esta demo."
+  },
+  "verification": {
+    "title": "Verifique su identidad",
+    "subtitle": "Hemos enviado un código de 6 dígitos a {{phoneNumber}}",
+    "resendCode": "¿No recibió el código? Reenviar en {{timer}}",
+    "verifyButton": "Verificar",
+    "secureNotice": "Su verificación es segura y está encriptada",
+    "invalidCode": "Código no válido",
+    "enterValidCode": "Por favor, introduzca un código válido de 6 dígitos",
+    "successTitle": "Éxito",
+    "successMessage": "¡Verificación exitosa! Se ha registrado como {{role}}.",
+    "testCodeResent": "Código de prueba reenviado",
+    "useTestCode": "Recuerde usar el código: {{code}}",
+    "codeResent": "Código reenviado",
+    "newCodeSent": "Se ha enviado un nuevo código de verificación.",
+    "testCodeReminder": "Recordatorio de código de prueba",
+    "verifyError": "Error al verificar el código. Por favor, inténtelo de nuevo.",
+    "resendError": "Error al reenviar el código. Por favor, inténtelo de nuevo.",
+    "testCodeTitle": "Modo de prueba"
+  },
+  "common": {
+    "ok": "Aceptar",
+    "cancel": "Cancelar",
+    "error": "Error"
+  },
+  "terms": {
+    "title": "Términos de servicio",
+    "description": "Bienvenido a Traductor Humano. Al usar nuestra aplicación, acepta estos términos, que garantizan un entorno justo y productivo para todos los usuarios. Nuestros servicios están diseñados para conectar a viajeros con traductores en tiempo real, facilitar la comunicación y proporcionar orientación cultural. Los usuarios deben tener al menos 18 años y proporcionar información precisa. Los traductores deben tener competencia en los idiomas que ofrecen. Todos los usuarios deben respetar a los demás y seguir las leyes locales. Protegemos sus datos de acuerdo con nuestra Política de Privacidad. Nos reservamos el derecho de suspender cuentas que violen estos términos."
+  },
+  "privacyPolicy": {
+    "title": "Política de privacidad",
+    "description": "En Traductor Humano, nos tomamos su privacidad muy en serio. Recopilamos información personal como números de teléfono y datos de ubicación solo para proporcionar nuestros servicios de traducción. Sus conversaciones están encriptadas y no se almacenan permanentemente a menos que se solicite por motivos de calidad. Utilizamos medidas de seguridad estándar de la industria para proteger sus datos. No vendemos su información a terceros. Puede acceder, modificar o eliminar sus datos en cualquier momento a través de la configuración de la aplicación. Al utilizar nuestros servicios, acepta esta política. Si tiene preguntas sobre su privacidad, póngase en contacto con nuestro equipo de soporte."
+  },
+  "tabs": {
+    "home": "Inicio",
+    "chat": "Chat",
+    "profile": "Perfil",
+    "earnings": "Ganancias"
+  },
   "languages": {
     "en": "Inglés",
     "es": "Español",

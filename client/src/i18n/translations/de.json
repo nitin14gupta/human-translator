@@ -11,6 +11,67 @@
     "needTranslator": "Ich brauche einen Übersetzer",
     "offerTranslation": "Ich biete Übersetzungsdienste an"
   },
+  "authentication": {
+    "title": "Erstellen Sie Ihr Konto",
+    "subtitle": "Treten Sie unserer Übersetzungsgemeinschaft bei",
+    "phoneNumberPlaceholder": "Telefonnummer",
+    "privacyNotice": "Wir werden Ihre Daten niemals ohne Erlaubnis weitergeben",
+    "signUpButton": "Sicher registrieren",
+    "orContinueWith": "Oder fortfahren mit",
+    "continueWithGoogle": "Mit Google fortfahren",
+    "continueWithApple": "Mit Apple fortfahren",
+    "termsPrefix": "Durch die Registrierung stimmen Sie unseren",
+    "terms": "Nutzungsbedingungen",
+    "andConnector": "und",
+    "privacyPolicy": "Datenschutzrichtlinie",
+    "appName": "Menschlicher Übersetzer",
+    "invalidNumber": "Ungültige Telefonnummer",
+    "enterValidNumber": "Bitte geben Sie eine gültige Telefonnummer ein",
+    "networkError": "Netzwerkfehler",
+    "testModePrompt": "Verbindung zum Server konnte nicht hergestellt werden. Möchten Sie mit einem Testcode fortfahren?",
+    "useTestCode": "Testcode verwenden",
+    "notImplemented": "Nicht implementiert",
+    "googleNotImplemented": "Die Anmeldung mit Google ist in dieser Demo nicht implementiert.",
+    "appleNotImplemented": "Die Anmeldung mit Apple ist in dieser Demo nicht implementiert."
+  },
+  "verification": {
+    "title": "Verifizieren Sie Ihre Identität",
+    "subtitle": "Wir haben einen 6-stelligen Code an {{phoneNumber}} gesendet",
+    "resendCode": "Code nicht erhalten? Erneut senden in {{timer}}",
+    "verifyButton": "Verifizieren",
+    "secureNotice": "Ihre Verifizierung ist sicher und verschlüsselt",
+    "invalidCode": "Ungültiger Code",
+    "enterValidCode": "Bitte geben Sie einen gültigen 6-stelligen Code ein",
+    "successTitle": "Erfolg",
+    "successMessage": "Verifizierung erfolgreich! Sie wurden als {{role}} registriert.",
+    "testCodeResent": "Testcode erneut gesendet",
+    "useTestCode": "Denken Sie daran, den Code zu verwenden: {{code}}",
+    "codeResent": "Code erneut gesendet",
+    "newCodeSent": "Ein neuer Verifizierungscode wurde gesendet.",
+    "testCodeReminder": "Testcode-Erinnerung",
+    "verifyError": "Fehler bei der Verifizierung des Codes. Bitte versuchen Sie es erneut.",
+    "resendError": "Fehler beim erneuten Senden des Codes. Bitte versuchen Sie es erneut.",
+    "testCodeTitle": "Testmodus"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "error": "Fehler"
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen",
+    "description": "Willkommen bei Menschlicher Übersetzer. Durch die Nutzung unserer App stimmen Sie diesen Bedingungen zu, die eine faire und produktive Umgebung für alle Benutzer gewährleisten. Unsere Dienste sind darauf ausgerichtet, Reisende mit Übersetzern in Echtzeit zu verbinden, die Kommunikation zu erleichtern und kulturelle Beratung anzubieten. Benutzer müssen mindestens 18 Jahre alt sein und genaue Informationen angeben. Übersetzer müssen Kenntnisse in den Sprachen haben, die sie anbieten. Alle Benutzer müssen andere respektieren und lokale Gesetze befolgen. Wir schützen Ihre Daten gemäß unserer Datenschutzrichtlinie. Wir behalten uns das Recht vor, Konten zu sperren, die gegen diese Bedingungen verstoßen."
+  },
+  "privacyPolicy": {
+    "title": "Datenschutzrichtlinie",
+    "description": "Bei Menschlicher Übersetzer nehmen wir Ihre Privatsphäre sehr ernst. Wir sammeln persönliche Informationen wie Telefonnummern und Standortdaten nur, um unsere Übersetzungsdienste anzubieten. Ihre Gespräche werden verschlüsselt und nicht dauerhaft gespeichert, es sei denn, dies wird aus Qualitätsgründen angefordert. Wir verwenden branchenübliche Sicherheitsmaßnahmen zum Schutz Ihrer Daten. Wir verkaufen Ihre Informationen nicht an Dritte. Sie können jederzeit über die App-Einstellungen auf Ihre Daten zugreifen, sie ändern oder löschen. Durch die Nutzung unserer Dienste stimmen Sie dieser Richtlinie zu. Wenn Sie Fragen zu Ihrer Privatsphäre haben, kontaktieren Sie bitte unser Support-Team."
+  },
+  "tabs": {
+    "home": "Startseite",
+    "chat": "Chat",
+    "profile": "Profil",
+    "earnings": "Verdienste"
+  },
   "languages": {
     "en": "Englisch",
     "es": "Spanisch",

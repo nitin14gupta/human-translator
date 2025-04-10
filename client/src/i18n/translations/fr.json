@@ -11,6 +11,67 @@
     "needTranslator": "J'ai besoin d'un traducteur",
     "offerTranslation": "Je propose des services de traduction"
   },
+  "authentication": {
+    "title": "Créez votre compte",
+    "subtitle": "Rejoignez notre communauté de traduction",
+    "phoneNumberPlaceholder": "Numéro de téléphone",
+    "privacyNotice": "Nous ne partagerons jamais vos données sans permission",
+    "signUpButton": "S'inscrire en toute sécurité",
+    "orContinueWith": "Ou continuer avec",
+    "continueWithGoogle": "Continuer avec Google",
+    "continueWithApple": "Continuer avec Apple",
+    "termsPrefix": "En vous inscrivant, vous acceptez nos",
+    "terms": "Conditions",
+    "andConnector": "et",
+    "privacyPolicy": "Politique de confidentialité",
+    "appName": "Traducteur Humain",
+    "invalidNumber": "Numéro de téléphone invalide",
+    "enterValidNumber": "Veuillez entrer un numéro de téléphone valide",
+    "networkError": "Erreur de réseau",
+    "testModePrompt": "Impossible de se connecter au serveur. Voulez-vous continuer avec un code de test?",
+    "useTestCode": "Utiliser le code de test",
+    "notImplemented": "Non implémenté",
+    "googleNotImplemented": "La connexion avec Google n'est pas implémentée dans cette démo.",
+    "appleNotImplemented": "La connexion avec Apple n'est pas implémentée dans cette démo."
+  },
+  "verification": {
+    "title": "Vérifiez votre identité",
+    "subtitle": "Nous avons envoyé un code à 6 chiffres à {{phoneNumber}}",
+    "resendCode": "Vous n'avez pas reçu le code? Renvoyer dans {{timer}}",
+    "verifyButton": "Vérifier",
+    "secureNotice": "Votre vérification est sécurisée et chiffrée",
+    "invalidCode": "Code invalide",
+    "enterValidCode": "Veuillez entrer un code valide à 6 chiffres",
+    "successTitle": "Succès",
+    "successMessage": "Vérification réussie! Vous êtes inscrit en tant que {{role}}.",
+    "testCodeResent": "Code de test renvoyé",
+    "useTestCode": "N'oubliez pas d'utiliser le code: {{code}}",
+    "codeResent": "Code renvoyé",
+    "newCodeSent": "Un nouveau code de vérification a été envoyé.",
+    "testCodeReminder": "Rappel du code de test",
+    "verifyError": "Échec de la vérification du code. Veuillez réessayer.",
+    "resendError": "Échec du renvoi du code. Veuillez réessayer.",
+    "testCodeTitle": "Mode test"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Annuler",
+    "error": "Erreur"
+  },
+  "terms": {
+    "title": "Conditions d'utilisation",
+    "description": "Bienvenue sur Traducteur Humain. En utilisant notre application, vous acceptez ces conditions qui garantissent un environnement équitable et productif pour tous les utilisateurs. Nos services sont conçus pour connecter les voyageurs avec des traducteurs en temps réel, faciliter la communication et fournir des conseils culturels. Les utilisateurs doivent avoir au moins 18 ans et fournir des informations précises. Les traducteurs doivent avoir une compétence dans les langues qu'ils offrent. Tous les utilisateurs doivent respecter les autres et suivre les lois locales. Nous protégeons vos données conformément à notre politique de confidentialité. Nous nous réservons le droit de suspendre les comptes qui violent ces conditions."
+  },
+  "privacyPolicy": {
+    "title": "Politique de confidentialité",
+    "description": "Chez Traducteur Humain, nous prenons votre confidentialité très au sérieux. Nous collectons des informations personnelles telles que les numéros de téléphone et les données de localisation uniquement pour fournir nos services de traduction. Vos conversations sont chiffrées et ne sont pas stockées de façon permanente sauf si demandé pour des raisons de qualité. Nous utilisons des mesures de sécurité standard pour protéger vos données. Nous ne vendons pas vos informations à des tiers. Vous pouvez accéder, modifier ou supprimer vos données à tout moment via les paramètres de l'application. En utilisant nos services, vous consentez à cette politique. Si vous avez des questions concernant votre confidentialité, veuillez contacter notre équipe de support."
+  },
+  "tabs": {
+    "home": "Accueil",
+    "chat": "Chat",
+    "profile": "Profil",
+    "earnings": "Gains"
+  },
   "languages": {
     "en": "Anglais",
     "es": "Espagnol",

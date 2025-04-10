@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { verifyCode, sendVerificationCode } from "../../services/api";
 
 export default function Verification() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
   const phoneNumber = params.phoneNumber as string;
@@ -37,9 +37,9 @@ export default function Verification() {
   useEffect(() => {
     if (isTestMode) {
       Alert.alert(
-        "Test Mode",
-        `Use the code: ${testCode}`,
-        [{ text: "OK" }]
+        t("verification.testCodeTitle", "Test Mode"),
+        t("verification.useTestCode", "Remember to use the code: {{code}}", { code: testCode }),
+        [{ text: t("common.ok", "OK") }]
       );
     }
   }, [isTestMode]);
@@ -102,7 +102,7 @@ export default function Verification() {
   const handleVerify = async () => {
     const fullCode = code.join("");
     if (fullCode.length !== 6) {
-      Alert.alert("Invalid Code", "Please enter a valid 6-digit code");
+      Alert.alert(t("verification.invalidCode", "Invalid Code"), t("verification.enterValidCode", "Please enter a valid 6-digit code"));
       return;
     }
 
@@ -110,33 +110,36 @@ export default function Verification() {
     try {
       if (isTestMode && fullCode === testCode) {
         // In test mode, just simulate a successful verification
-        // Show success alert and navigate to home
         Alert.alert(
-          "Success (Test Mode)", 
-          `Verification successful! You've been registered as a ${isNeedTranslator ? "traveler" : "translator"}.`,
+          t("verification.successTitle", "Success (Test Mode)"), 
+          t("verification.successMessage", "Verification successful! You've been registered as a {{role}}.", { 
+            role: isNeedTranslator ? t("roleSelection.needTranslator", "traveler") : t("roleSelection.offerTranslation", "translator") 
+          }),
           [
             {
-              text: "OK",
+              text: t("common.ok", "OK"),
               onPress: () => router.push("/(tabs)")
             }
           ]
         );
       } else {
-        // Call the API to verify the code
+        // Call the real API to verify the code
         const response = await verifyCode(
           phoneNumber,
           fullCode,
           isNeedTranslator,
-          t("languages.en") // Use current language
+          i18n.language // Use current language from i18n
         );
         
         // Show success alert and navigate to home
         Alert.alert(
-          "Success", 
-          `Verification successful! You've been registered as a ${isNeedTranslator ? "traveler" : "translator"}.`,
+          t("verification.successTitle", "Success"), 
+          t("verification.successMessage", "Verification successful! You've been registered as a {{role}}.", { 
+            role: isNeedTranslator ? t("roleSelection.needTranslator", "traveler") : t("roleSelection.offerTranslation", "translator") 
+          }),
           [
             {
-              text: "OK",
+              text: t("common.ok", "OK"),
               onPress: () => router.push("/(tabs)")
             }
           ]
@@ -145,24 +148,23 @@ export default function Verification() {
     } catch (error) {
       console.error("Error verifying code:", error);
       
-      if (isTestMode) {
-        // In test mode, check if the code matches our test code
-        if (fullCode === testCode) {
-          Alert.alert(
-            "Success (Test Mode)", 
-            `Verification successful! You've been registered as a ${isNeedTranslator ? "traveler" : "translator"}.`,
-            [
-              {
-                text: "OK",
-                onPress: () => router.push("/(tabs)")
-              }
-            ]
-          );
-          return;
-        }
+      if (isTestMode && fullCode === testCode) {
+        // In test mode, if code matches, allow verification despite API error
+        Alert.alert(
+          t("verification.successTitle", "Success (Test Mode)"), 
+          t("verification.successMessage", "Verification successful! You've been registered as a {{role}}.", { 
+            role: isNeedTranslator ? t("roleSelection.needTranslator", "traveler") : t("roleSelection.offerTranslation", "translator") 
+          }),
+          [
+            {
+              text: t("common.ok", "OK"),
+              onPress: () => router.push("/(tabs)")
+            }
+          ]
+        );
+      } else {
+        Alert.alert(t("common.error", "Error"), t("verification.verifyError", "Failed to verify code. Please try again."));
       }
-      
-      Alert.alert("Error", "Failed to verify code. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -183,9 +185,12 @@ export default function Verification() {
         // Focus on first input
         inputRefs.current[0]?.focus();
         
-        Alert.alert("Test Code Resent", `Remember to use the code: ${testCode}`);
+        Alert.alert(
+          t("verification.testCodeResent", "Test Code Resent"), 
+          t("verification.useTestCode", "Remember to use the code: {{code}}", { code: testCode })
+        );
       } else {
-        // Call the API to resend the code
+        // Call the real API to resend the verification code
         await sendVerificationCode(phoneNumber);
         
         // Reset timer and code
@@ -196,7 +201,7 @@ export default function Verification() {
         // Focus on first input
         inputRefs.current[0]?.focus();
         
-        Alert.alert("Code Resent", "A new verification code has been sent.");
+        Alert.alert(t("verification.codeResent", "Code Resent"), t("verification.newCodeSent", "A new verification code has been sent."));
       }
     } catch (error) {
       console.error("Error resending code:", error);
@@ -205,9 +210,12 @@ export default function Verification() {
         // In test mode, handle failure gracefully
         setTimer(30);
         setCanResend(false);
-        Alert.alert("Test Code Reminder", `Use the code: ${testCode}`);
+        Alert.alert(
+          t("verification.testCodeReminder", "Test Code Reminder"), 
+          t("verification.useTestCode", "Remember to use the code: {{code}}", { code: testCode })
+        );
       } else {
-        Alert.alert("Error", "Failed to resend code. Please try again.");
+        Alert.alert(t("common.error", "Error"), t("verification.resendError", "Failed to resend code. Please try again."));
       }
     } finally {
       setIsLoading(false);

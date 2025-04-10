@@ -1,44 +1,99 @@
 {
-  "languageSelection": {
-    "title": "Choose Your Preferred Language",
-    "subtitle": "You can change this later in settings.",
-    "continueButton": "Continue in {{language}}",
-    "loading": "Loading..."
-  },
-  "roleSelection": {
-    "title": "Are You a Traveler or Translator?",
-    "subtitle": "Select your role to tailor your experience.",
-    "needTranslator": "I Need a Translator",
-    "offerTranslation": "I Offer Translation Services"
-  },
-  "authentication": {
-    "title": "Create Your Account",
-    "subtitle": "Join our translation community",
-    "phoneNumberPlaceholder": "Phone Number",
-    "privacyNotice": "We'll never share your details without permission",
-    "signUpButton": "Sign Up Securely",
-    "orContinueWith": "Or continue with",
-    "continueWithGoogle": "Continue with Google",
-    "continueWithApple": "Continue with Apple",
-    "termsPrefix": "By signing up, you agree to our",
-    "terms": "Terms",
-    "andConnector": "and",
-    "privacyPolicy": "Privacy Policy",
-    "appName": "Human Translator"
-  },
-  "verification": {
-    "title": "Verify Your Identity",
-    "subtitle": "We've sent a 6-digit code to {{phoneNumber}}",
-    "resendCode": "Didn't receive the code? Resend in {{timer}}",
-    "verifyButton": "Verify",
-    "secureNotice": "Your verification is secure and encrypted"
-  },
-  "languages": {
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "de": "German",
-    "zh": "Chinese",
-    "ja": "Japanese"
-  }
-} 
+    "languageSelection": {
+      "title": "Choose Your Preferred Language",
+      "subtitle": "You can change this later in settings.",
+      "continueButton": "Continue in {{language}}",
+      "loading": "Loading..."
+    },
+    "roleSelection": {
+      "title": "Are You a Traveler or Translator?",
+      "subtitle": "Select your role to tailor your experience.",
+      "needTranslator": "I Need a Translator",
+      "offerTranslation": "I Offer Translation Services"
+    },
+    "authentication": {
+      "title": "Create Your Account",
+      "subtitle": "Join our translation community",
+      "phoneNumberPlaceholder": "Phone Number",
+      "privacyNotice": "We'll never share your details without permission",
+      "signUpButton": "Sign Up Securely",
+      "orContinueWith": "Or continue with",
+      "continueWithGoogle": "Continue with Google",
+      "continueWithApple": "Continue with Apple",
+      "termsPrefix": "By signing up, you agree to our",
+      "terms": "Terms",
+      "andConnector": "and",
+      "privacyPolicy": "Privacy Policy",
+      "appName": "Human Translator",
+      "invalidNumber": "Invalid Phone Number",
+      "enterValidNumber": "Please enter a valid phone number",
+      "networkError": "Network Error",
+      "testModePrompt": "Could not connect to the server. Would you like to proceed with a test code?",
+      "useTestCode": "Use Test Code",
+      "notImplemented": "Not Implemented",
+      "googleNotImplemented": "Google Sign-In is not implemented in this demo.",
+      "appleNotImplemented": "Apple Sign-In is not implemented in this demo."
+    },
+    "verification": {
+      "title": "Verify Your Identity",
+      "subtitle": "We've sent a 6-digit code to {{phoneNumber}}",
+      "resendCode": "Didn't receive the code? Resend in {{timer}}",
+      "verifyButton": "Verify",
+      "secureNotice": "Your verification is secure and encrypted",
+      "invalidCode": "Invalid Code",
+      "enterValidCode": "Please enter a valid 6-digit code",
+      "successTitle": "Success",
+      "successMessage": "Verification successful! You've been registered as a {{role}}.",
+      "testCodeResent": "Test Code Resent",
+      "useTestCode": "Remember to use the code: {{code}}",
+      "codeResent": "Code Resent",
+      "newCodeSent": "A new verification code has been sent.",
+      "testCodeReminder": "Test Code Reminder",
+      "verifyError": "Failed to verify code. Please try again.",
+      "resendError": "Failed to resend code. Please try again.",
+      "testCodeTitle": "Test Mode"
+    },
+    "common": {
+      "ok": "OK",
+      "cancel": "Cancel",
+      "error": "Error"
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "description": "Welcome to Human Translator. By using our app, you agree to these terms, which ensure a fair and productive environment for all users. Our services are designed to connect travelers with translators in real-time, facilitate communication, and provide cultural guidance. Users must be at least 18 years old and provide accurate information. Translators must have proficiency in the languages they offer. All users must respect others and follow local laws. We protect your data according to our Privacy Policy. We reserve the right to suspend accounts that violate these terms."
+    },
+    "privacyPolicy": {
+      "title": "Privacy Policy",
+      "description": "At Human Translator, we take your privacy seriously. We collect personal information such as phone numbers and location data only to provide our translation services. Your conversations are encrypted and not stored permanently unless requested for quality purposes. We use industry-standard security measures to protect your data. We do not sell your information to third parties. You can access, modify, or delete your data at any time through the app settings. By using our services, you consent to this policy. If you have questions about your privacy, please contact our support team."
+    },
+    "home": {
+      "greeting": "Good day!",
+      "searchPlaceholder": "Search for a translator",
+      "nearbyTranslators": "Nearby Translators",
+      "quickActions": "Quick Actions",
+      "startChat": "Start Chat",
+      "favorites": "Favorites",
+      "settings": "Settings"
+    },
+    "earnings": {
+      "currentBalance": "Current Balance",
+      "processingTime": "Payments processed weekly",
+      "history": "Transaction History",
+      "disclaimer": "Earnings are paid out every Friday to your linked bank account.",
+      "viewAll": "View All"
+    },
+    "tabs": {
+      "home": "Home",
+      "chat": "Chat",
+      "profile": "Profile",
+      "earnings": "Earnings"
+    },
+    "languages": {
+      "en": "English",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German",
+      "zh": "Chinese",
+      "ja": "Japanese"
+    }
+  } 

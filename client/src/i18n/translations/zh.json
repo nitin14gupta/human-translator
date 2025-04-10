@@ -11,6 +11,67 @@
     "needTranslator": "我需要译员",
     "offerTranslation": "我提供翻译服务"
   },
+  "authentication": {
+    "title": "创建您的账户",
+    "subtitle": "加入我们的翻译社区",
+    "phoneNumberPlaceholder": "电话号码",
+    "privacyNotice": "未经许可，我们绝不会分享您的详细信息",
+    "signUpButton": "安全注册",
+    "orContinueWith": "或继续使用",
+    "continueWithGoogle": "使用谷歌继续",
+    "continueWithApple": "使用苹果继续",
+    "termsPrefix": "注册即表示您同意我们的",
+    "terms": "条款",
+    "andConnector": "和",
+    "privacyPolicy": "隐私政策",
+    "appName": "人工翻译",
+    "invalidNumber": "无效的电话号码",
+    "enterValidNumber": "请输入有效的电话号码",
+    "networkError": "网络错误",
+    "testModePrompt": "无法连接到服务器。您想继续使用测试代码吗？",
+    "useTestCode": "使用测试代码",
+    "notImplemented": "未实现",
+    "googleNotImplemented": "此演示中未实现谷歌登录。",
+    "appleNotImplemented": "此演示中未实现苹果登录。"
+  },
+  "verification": {
+    "title": "验证您的身份",
+    "subtitle": "我们已发送6位数验证码至 {{phoneNumber}}",
+    "resendCode": "没有收到验证码？在 {{timer}} 内重新发送",
+    "verifyButton": "验证",
+    "secureNotice": "您的验证是安全且加密的",
+    "invalidCode": "无效代码",
+    "enterValidCode": "请输入有效的6位数代码",
+    "successTitle": "成功",
+    "successMessage": "验证成功！您已注册为{{role}}。",
+    "testCodeResent": "测试代码已重新发送",
+    "useTestCode": "请记得使用代码: {{code}}",
+    "codeResent": "代码已重新发送",
+    "newCodeSent": "新的验证码已发送。",
+    "testCodeReminder": "测试代码提醒",
+    "verifyError": "验证代码失败。请重试。",
+    "resendError": "重新发送代码失败。请重试。",
+    "testCodeTitle": "测试模式"
+  },
+  "common": {
+    "ok": "确定",
+    "cancel": "取消",
+    "error": "错误"
+  },
+  "terms": {
+    "title": "服务条款",
+    "description": "欢迎来到人工翻译。使用我们的应用程序，即表示您同意这些条款，这些条款确保所有用户都有公平和高效的环境。我们的服务旨在实时连接旅行者与翻译员，促进沟通并提供文化指导。用户必须年满18岁并提供准确信息。翻译员必须精通他们提供的语言。所有用户必须尊重他人并遵守当地法律。我们根据我们的隐私政策保护您的数据。我们保留暂停违反这些条款的账户的权利。"
+  },
+  "privacyPolicy": {
+    "title": "隐私政策",
+    "description": "在人工翻译，我们非常重视您的隐私。我们收集个人信息如电话号码和位置数据仅用于提供我们的翻译服务。您的对话是加密的，除非因质量原因要求，否则不会永久存储。我们使用行业标准的安全措施来保护您的数据。我们不会将您的信息出售给第三方。您可以随时通过应用程序设置访问、修改或删除您的数据。使用我们的服务，即表示您同意此政策。如果您对隐私有疑问，请联系我们的支持团队。"
+  },
+  "tabs": {
+    "home": "首页",
+    "chat": "聊天",
+    "profile": "个人",
+    "earnings": "收入"
+  },
   "languages": {
     "en": "英语",
     "es": "西班牙语",
