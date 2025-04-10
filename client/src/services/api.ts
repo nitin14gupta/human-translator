@@ -20,12 +20,25 @@ const getApiBaseUrl = () => {
 
 const API_URL = getApiBaseUrl();
 
+// Network state information
+let isOffline = false;
+let isServerMaintenance = false;
+
 // Helper function to handle responses
 const handleResponse = async (response: Response) => {
+  // Check for maintenance mode
+  if (response.status === 503) {
+    isServerMaintenance = true;
+    throw new Error('Server is under maintenance');
+  }
+  
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({
+      detail: `Error: ${response.status} ${response.statusText}`
+    }));
     throw new Error(error.detail || 'An error occurred');
   }
+  
   return response.json();
 };
 
@@ -48,70 +61,99 @@ const createAuthHeaders = async () => {
   return headers;
 };
 
+// Wrapper for fetch with error handling
+export const apiFetch = async (endpoint: string, options?: RequestInit) => {
+  try {
+    if (isOffline) {
+      throw new Error('No internet connection');
+    }
+    
+    if (isServerMaintenance) {
+      throw new Error('Server is under maintenance');
+    }
+    
+    const response = await fetch(`${API_URL}${endpoint}`, options);
+    return await handleResponse(response);
+  } catch (error) {
+    // Re-throw the error for the component to handle
+    throw error;
+  }
+};
+
 // Authentication
 export const sendVerificationCode = async (phoneNumber: string) => {
-  const response = await fetch(`${API_URL}/send-verification-code`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      phone_number: phoneNumber,
-    }),
-  });
-  
-  return handleResponse(response);
+  try {
+    return await apiFetch('/send-verification-code', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phone_number: phoneNumber,
+      }),
+    });
+  } catch (error) {
+    console.error('Error sending verification code:', error);
+    throw error;
+  }
 };
 
 export const verifyCode = async (phoneNumber: string, code: string, isNeedTranslator: boolean, language: string = 'en') => {
-  const response = await fetch(`${API_URL}/verify-code`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      phone_number: phoneNumber,
-      code: code,
-      is_traveler: isNeedTranslator,
-      preferred_language: language,
-    }),
-  });
-  
-  const data = await handleResponse(response);
-  
-  // Save token
-  if (data.access_token) {
-    await AsyncStorage.setItem('authToken', data.access_token);
-    await AsyncStorage.setItem('userId', data.user_id.toString());
-    await AsyncStorage.setItem('isNeedTranslator', data.is_traveler.toString());
+  try {
+    const data = await apiFetch('/verify-code', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phone_number: phoneNumber,
+        code: code,
+        is_traveler: isNeedTranslator,
+        preferred_language: language,
+      }),
+    });
+    
+    // Save token
+    if (data.access_token) {
+      await AsyncStorage.setItem('authToken', data.access_token);
+      await AsyncStorage.setItem('userId', data.user_id.toString());
+      await AsyncStorage.setItem('isNeedTranslator', data.is_traveler.toString());
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error verifying code:', error);
+    throw error;
   }
-  
-  return data;
 };
 
 // User related
 export const getUserProfile = async () => {
-  const headers = await createAuthHeaders();
-  
-  const response = await fetch(`${API_URL}/users/me`, {
-    method: 'GET',
-    headers,
-  });
-  
-  return handleResponse(response);
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/users/me', {
+      method: 'GET',
+      headers,
+    });
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    throw error;
+  }
 };
 
 // Update user profile data
 export const updateUserProfile = async (data: { preferred_language?: string; is_traveler?: boolean }) => {
-  const headers = await createAuthHeaders();
-  
-  const response = await fetch(`${API_URL}/users/me`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify(data),
-  });
-  
-  return handleResponse(response);
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/users/me', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data),
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
 };
 
 // Language preferences
@@ -120,12 +162,24 @@ export const updateUserLanguage = async (language: string) => {
 };
 
 export const getUserLanguage = async () => {
-  const headers = await createAuthHeaders();
-  
-  const response = await fetch(`${API_URL}/users/me/language`, {
-    method: 'GET',
-    headers,
-  });
-  
-  return handleResponse(response);
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/users/me/language', {
+      method: 'GET',
+      headers,
+    });
+  } catch (error) {
+    console.error('Error getting user language:', error);
+    throw error;
+  }
+};
+
+// Set offline status for testing or when NetInfo detects offline
+export const setOfflineStatus = (status: boolean) => {
+  isOffline = status;
+};
+
+// Set maintenance status for testing
+export const setMaintenanceStatus = (status: boolean) => {
+  isServerMaintenance = status;
 }; 

@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  Image,
+  Linking,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,86 +21,80 @@ export default function MaintenanceScreen({
 }: MaintenanceScreenProps) {
   const { t } = useTranslation();
 
+  const handleStatusCheck = () => {
+    // Replace with your status page URL
+    Linking.openURL('https://status.humantranslator.app');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Maintenance Icon */}
         <View style={styles.iconContainer}>
-          <Ionicons name="construct" size={70} color="#FF9500" />
+          <Ionicons name="construct-outline" size={70} color="#FF9500" />
         </View>
 
-        {/* Maintenance Info */}
-        <Text style={styles.title}>{t('maintenance.title', 'System Maintenance')}</Text>
-        <Text style={styles.message}>
-          {t(
-            'maintenance.message',
-            'Our app is currently undergoing scheduled maintenance to improve your experience. We\'ll be back soon!'
-          )}
-        </Text>
+        {/* Main Content */}
+        <Text style={styles.title}>{t('maintenance.title')}</Text>
+        <Text style={styles.message}>{t('maintenance.message')}</Text>
 
         {/* Estimated Time */}
         {estimatedTime && (
           <View style={styles.timeContainer}>
-            <Ionicons name="time-outline" size={20} color="#666666" style={styles.timeIcon} />
-            <Text style={styles.timeText}>
-              {t('maintenance.estimatedTime', 'Estimated completion')}: {estimatedTime}
+            <Text style={styles.timeLabel}>
+              {t('maintenance.scheduledTime')}
+            </Text>
+            <Text style={styles.timeValue}>
+              {t('maintenance.estimatedTime', { time: estimatedTime })}
             </Text>
           </View>
         )}
 
-        {/* Refresh Button */}
-        {onRefresh && (
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={onRefresh}
-          >
-            <Ionicons name="refresh" size={20} color="#FFFFFF" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>
-              {t('maintenance.checkAgain', 'Check Again')}
+        {/* Info Box */}
+        <View style={styles.infoContainer}>
+          <View style={styles.infoItem}>
+            <Ionicons name="build-outline" size={24} color="#FF9500" />
+            <Text style={styles.infoText}>
+              {t('maintenance.upgradeInfo')}
             </Text>
-          </TouchableOpacity>
-        )}
+          </View>
 
-        {/* Explanation Section */}
-        <View style={styles.explanationContainer}>
-          <Text style={styles.explanationTitle}>
-            {t('maintenance.whatHappening', 'What\'s Happening?')}
-          </Text>
-          <Text style={styles.explanationText}>
-            {t(
-              'maintenance.explanation',
-              'We\'re updating our systems to bring you new features and improve performance. This maintenance helps us provide a better service for you.'
-            )}
-          </Text>
+          <View style={styles.divider} />
 
-          <View style={styles.bulletPoints}>
-            <View style={styles.bulletPoint}>
-              <View style={styles.bullet} />
-              <Text style={styles.bulletText}>
-                {t('maintenance.bulletOne', 'Improving app performance')}
-              </Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <View style={styles.bullet} />
-              <Text style={styles.bulletText}>
-                {t('maintenance.bulletTwo', 'Adding new features')}
-              </Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <View style={styles.bullet} />
-              <Text style={styles.bulletText}>
-                {t('maintenance.bulletThree', 'Enhancing security')}
-              </Text>
-            </View>
+          <View style={styles.infoItem}>
+            <Ionicons name="heart-outline" size={24} color="#FF9500" />
+            <Text style={styles.infoText}>
+              {t('maintenance.apologyMessage')}
+            </Text>
           </View>
         </View>
-      </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {t('maintenance.apologies', 'We apologize for any inconvenience')}
-        </Text>
+        {/* Action Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.statusButton}
+            onPress={handleStatusCheck}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="information-circle" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>
+              {t('maintenance.checkStatus')}
+            </Text>
+          </TouchableOpacity>
+
+          {onRefresh && (
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={onRefresh}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="refresh" size={20} color="#FF9500" style={styles.buttonIcon} />
+              <Text style={styles.retryButtonText}>
+                {t('maintenance.tryAgain')}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -143,31 +137,74 @@ const styles = StyleSheet.create({
   timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
     marginBottom: 32,
+    backgroundColor: '#FFF9F0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    width: '100%',
+    justifyContent: 'center',
   },
-  timeIcon: {
-    marginRight: 8,
-  },
-  timeText: {
-    fontSize: 15,
+  timeLabel: {
+    fontSize: 16,
     color: '#333333',
     fontWeight: '500',
+    marginRight: 6,
   },
-  refreshButton: {
+  timeValue: {
+    fontSize: 16,
+    color: '#FF9500',
+    fontWeight: '600',
+  },
+  infoContainer: {
+    width: '100%',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 32,
+  },
+  infoItem: {
     flexDirection: 'row',
-    backgroundColor: '#4F6BFF',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#666666',
+    marginLeft: 16,
+    flex: 1,
+    lineHeight: 20,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#EEEEEE',
+    width: '100%',
+  },
+  buttonContainer: {
+    width: '100%',
+    gap: 16,
+  },
+  statusButton: {
+    flexDirection: 'row',
+    backgroundColor: '#FF9500',
     paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
     width: '100%',
-    maxWidth: 280,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#FF9500',
   },
   buttonIcon: {
     marginRight: 8,
@@ -177,52 +214,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  explanationContainer: {
-    width: '100%',
-    backgroundColor: '#F9F9F9',
-    padding: 20,
-    borderRadius: 12,
-  },
-  explanationTitle: {
+  retryButtonText: {
+    color: '#FF9500',
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 12,
-  },
-  explanationText: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  bulletPoints: {
-    width: '100%',
-  },
-  bulletPoint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  bullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FF9500',
-    marginRight: 10,
-  },
-  bulletText: {
-    fontSize: 14,
-    color: '#333333',
-  },
-  footer: {
-    width: '100%',
-    padding: 16,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#999999',
   },
 }); 

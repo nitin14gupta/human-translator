@@ -79,5 +79,44 @@
     "de": "Deutsch",
     "zh": "Chinesisch",
     "ja": "Japanisch"
+  },
+  "error": {
+    "title": "Etwas ist schiefgelaufen",
+    "message": "Wir haben Probleme bei der Verarbeitung Ihrer Anfrage. Bitte versuchen Sie es später erneut.",
+    "code": "Fehlercode",
+    "whatHappened": "Was könnte passiert sein?",
+    "serverIssue": "Unser Server könnte Probleme haben",
+    "connectionIssue": "Ihre Verbindung könnte instabil sein",
+    "timeoutIssue": "Die Anfrage könnte eine Zeitüberschreitung gehabt haben",
+    "retry": "Erneut versuchen",
+    "goHome": "Zur Startseite",
+    "supportInfo": "Wenn das Problem weiterhin besteht, kontaktieren Sie unser Support-Team."
+  },
+  "noInternet": {
+    "title": "Keine Internetverbindung",
+    "message": "Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut",
+    "tips": "Tipps zur Fehlerbehebung:",
+    "checkWifi": "Überprüfen Sie Ihre WLAN-Verbindung",
+    "checkData": "Stellen Sie sicher, dass mobile Daten aktiviert sind",
+    "restartDevice": "Starten Sie Ihr Gerät neu",
+    "retry": "Verbindung erneut versuchen",
+    "offlineNotice": "Einige Funktionen könnten offline verfügbar sein"
+  },
+  "maintenance": {
+    "title": "Geplante Wartung",
+    "message": "Wir führen derzeit eine geplante Wartung durch, um unseren Service zu verbessern",
+    "scheduledTime": "Geschätzte Fertigstellung",
+    "estimatedTime": "in etwa {{time}}",
+    "upgradeInfo": "Wir aktualisieren unsere Systeme, um Ihnen besser zu dienen",
+    "apologyMessage": "Wir entschuldigen uns für etwaige Unannehmlichkeiten",
+    "checkStatus": "Status prüfen",
+    "tryAgain": "Später erneut versuchen"
+  },
+  "session": {
+    "expired": "Sitzung abgelaufen",
+    "message": "Ihre Sitzung ist aufgrund von Inaktivität abgelaufen",
+    "securityMessage": "Zu Ihrer Sicherheit wurden Sie nach einer Zeit der Inaktivität abgemeldet",
+    "loginAgain": "Bitte melden Sie sich erneut an, um fortzufahren",
+    "loginButton": "Anmelden"
   }
 } 

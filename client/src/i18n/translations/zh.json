@@ -79,5 +79,44 @@
     "de": "德语",
     "zh": "中文",
     "ja": "日语"
+  },
+  "error": {
+    "title": "出现错误",
+    "message": "我们在处理您的请求时遇到问题。请稍后再试。",
+    "code": "错误代码",
+    "whatHappened": "可能发生了什么？",
+    "serverIssue": "我们的服务器可能遇到了问题",
+    "connectionIssue": "您的连接可能不稳定",
+    "timeoutIssue": "请求可能已超时",
+    "retry": "重试",
+    "goHome": "返回首页",
+    "supportInfo": "如果问题持续存在，请联系我们的支持团队。"
+  },
+  "noInternet": {
+    "title": "无网络连接",
+    "message": "请检查您的网络连接并重试",
+    "tips": "故障排除提示：",
+    "checkWifi": "检查您的Wi-Fi连接",
+    "checkData": "确保移动数据已开启",
+    "restartDevice": "重启您的设备",
+    "retry": "重试连接",
+    "offlineNotice": "某些功能可能在离线状态下可用"
+  },
+  "maintenance": {
+    "title": "计划维护",
+    "message": "我们目前正在进行计划维护以改善我们的服务",
+    "scheduledTime": "预计完成时间",
+    "estimatedTime": "大约 {{time}}",
+    "upgradeInfo": "我们正在升级系统以便更好地为您服务",
+    "apologyMessage": "我们为给您带来的不便道歉",
+    "checkStatus": "查看状态",
+    "tryAgain": "稍后再试"
+  },
+  "session": {
+    "expired": "会话已过期",
+    "message": "由于不活动，您的会话已过期",
+    "securityMessage": "为了您的安全，在一段时间不活动后您已被登出",
+    "loginAgain": "请重新登录以继续",
+    "loginButton": "登录"
   }
 } 

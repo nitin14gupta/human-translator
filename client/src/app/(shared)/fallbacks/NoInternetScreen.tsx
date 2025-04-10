@@ -19,70 +19,52 @@ export default function NoInternetScreen({ onRetry }: NoInternetScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* No Internet Icon */}
+        {/* Icon */}
         <View style={styles.iconContainer}>
-          <Ionicons name="wifi-outline" size={70} color="#007AFF" />
+          <Ionicons name="wifi-outline" size={70} color="#8E8E93" />
         </View>
 
-        {/* Main Content */}
-        <Text style={styles.title}>
-          {t('noInternet.title', 'No Internet Connection')}
-        </Text>
-        <Text style={styles.message}>
-          {t(
-            'noInternet.message',
-            'It looks like you\'re offline. Please check your connection and try again.'
-          )}
-        </Text>
+        {/* Main Text */}
+        <Text style={styles.title}>{t('noInternet.title')}</Text>
+        <Text style={styles.message}>{t('noInternet.message')}</Text>
 
-        {/* Troubleshooting Tips */}
+        {/* Tips Section */}
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>
-            {t('noInternet.tipsTitle', 'Try these tips:')}
-          </Text>
+          <Text style={styles.tipsTitle}>{t('noInternet.tips')}</Text>
+          
           <View style={styles.tipItem}>
-            <Ionicons name="refresh-outline" size={20} color="#007AFF" />
-            <Text style={styles.tipText}>
-              {t('noInternet.tip1', 'Check your Wi-Fi or cellular data connection')}
-            </Text>
+            <Ionicons name="wifi" size={20} color="#8E8E93" />
+            <Text style={styles.tipText}>{t('noInternet.checkWifi')}</Text>
           </View>
+          
           <View style={styles.tipItem}>
-            <Ionicons name="airplane-outline" size={20} color="#007AFF" />
-            <Text style={styles.tipText}>
-              {t('noInternet.tip2', 'Make sure airplane mode is off')}
-            </Text>
+            <Ionicons name="cellular" size={20} color="#8E8E93" />
+            <Text style={styles.tipText}>{t('noInternet.checkData')}</Text>
           </View>
+          
           <View style={styles.tipItem}>
-            <Ionicons name="move-outline" size={20} color="#007AFF" />
-            <Text style={styles.tipText}>
-              {t('noInternet.tip3', 'Move to an area with better reception')}
-            </Text>
-          </View>
-          <View style={styles.tipItem}>
-            <Ionicons name="power-outline" size={20} color="#007AFF" />
-            <Text style={styles.tipText}>
-              {t('noInternet.tip4', 'Restart your device')}
-            </Text>
+            <Ionicons name="refresh-circle" size={20} color="#8E8E93" />
+            <Text style={styles.tipText}>{t('noInternet.restartDevice')}</Text>
           </View>
         </View>
-
+        
         {/* Retry Button */}
-        <TouchableOpacity 
-          style={styles.retryButton} 
-          onPress={onRetry}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="refresh" size={20} color="#FFFFFF" style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>
-            {t('noInternet.retryButton', 'Try Again')}
-          </Text>
-        </TouchableOpacity>
+        {onRetry && (
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={onRetry}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="refresh" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>{t('noInternet.retry')}</Text>
+          </TouchableOpacity>
+        )}
       </View>
-
+      
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          {t('noInternet.offlineInfo', 'Some features may be available offline.')}
+          {t('noInternet.offlineNotice')}
         </Text>
       </View>
     </SafeAreaView>
@@ -104,7 +86,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
@@ -113,7 +95,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#000000',
-    marginBottom: 16,
+    marginBottom: 12,
     textAlign: 'center',
   },
   message: {
@@ -125,7 +107,7 @@ const styles = StyleSheet.create({
   },
   tipsContainer: {
     width: '100%',
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F9F9FB',
     borderRadius: 12,
     padding: 20,
     marginBottom: 32,

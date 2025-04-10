@@ -22,7 +22,6 @@ export default function SessionExpiredScreen({ onLogin }: SessionExpiredScreenPr
     if (onLogin) {
       onLogin();
     } else {
-      // Default navigation to login screen
       router.replace('/');
     }
   };
@@ -35,65 +34,32 @@ export default function SessionExpiredScreen({ onLogin }: SessionExpiredScreenPr
           <Ionicons name="time-outline" size={70} color="#FF3B30" />
         </View>
 
-        {/* Main Content */}
-        <Text style={styles.title}>
-          {t('session.expired.title', 'Session Expired')}
-        </Text>
-        <Text style={styles.message}>
-          {t(
-            'session.expired.message',
-            'Your session has expired for security reasons. Please log in again to continue using the app.'
-          )}
-        </Text>
+        {/* Message */}
+        <Text style={styles.title}>{t('session.expired')}</Text>
+        <Text style={styles.message}>{t('session.message')}</Text>
 
-        {/* Information Section */}
-        <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>
-            {t('session.expired.whyTitle', 'Why did this happen?')}
-          </Text>
-          <Text style={styles.infoText}>
-            {t(
-              'session.expired.whyMessage',
-              'Sessions expire automatically after a period of inactivity to protect your account security.'
-            )}
+        {/* Security Notice */}
+        <View style={styles.noticeContainer}>
+          <Ionicons name="shield-checkmark-outline" size={24} color="#FF3B30" />
+          <Text style={styles.noticeText}>
+            {t('session.securityMessage')}
           </Text>
         </View>
+
+        {/* Login Instruction */}
+        <Text style={styles.instruction}>
+          {t('session.loginAgain')}
+        </Text>
 
         {/* Login Button */}
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+        <TouchableOpacity 
+          style={styles.loginButton} 
+          onPress={handleLogin}
+          activeOpacity={0.7}
+        >
           <Ionicons name="log-in-outline" size={20} color="#FFFFFF" style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>
-            {t('session.expired.loginButton', 'Log In Again')}
-          </Text>
+          <Text style={styles.buttonText}>{t('session.loginButton')}</Text>
         </TouchableOpacity>
-
-        {/* Help Section */}
-        <View style={styles.helpContainer}>
-          <Text style={styles.helpTitle}>
-            {t('session.expired.needHelp', 'Need help?')}
-          </Text>
-          <View style={styles.helpItems}>
-            <TouchableOpacity style={styles.helpItem}>
-              <Ionicons name="help-circle-outline" size={18} color="#4F6BFF" />
-              <Text style={styles.helpItemText}>
-                {t('session.expired.faq', 'FAQ')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.helpItem}>
-              <Ionicons name="mail-outline" size={18} color="#4F6BFF" />
-              <Text style={styles.helpItemText}>
-                {t('session.expired.support', 'Contact Support')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {t('session.expired.noDataLost', 'Don\'t worry, your data is safe and secure.')}
-        </Text>
       </View>
     </SafeAreaView>
   );
@@ -133,33 +99,37 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 24,
   },
-  infoBox: {
-    width: '100%',
-    backgroundColor: '#F9F9F9',
+  noticeContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF5F5',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     marginBottom: 32,
+    alignItems: 'center',
+    width: '100%',
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 8,
-  },
-  infoText: {
+  noticeText: {
     fontSize: 14,
     color: '#666666',
+    marginLeft: 12,
+    flex: 1,
     lineHeight: 20,
+  },
+  instruction: {
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
+    marginBottom: 24,
+    textAlign: 'center',
   },
   loginButton: {
     flexDirection: 'row',
-    backgroundColor: '#4F6BFF',
+    backgroundColor: '#FF3B30',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
     width: '100%',
     maxWidth: 280,
   },
@@ -170,42 +140,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  helpContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 16,
-  },
-  helpItems: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  helpItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 12,
-  },
-  helpItemText: {
-    fontSize: 14,
-    color: '#4F6BFF',
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  footer: {
-    width: '100%',
-    padding: 16,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#999999',
   },
 }); 

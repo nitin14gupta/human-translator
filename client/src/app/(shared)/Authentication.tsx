@@ -16,6 +16,13 @@ import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { sendVerificationCode } from "../../services/api";
+import { useErrorHandler } from '../../components/FallbackHandler';
+
+// Function to validate phone numbers
+const isValidPhoneNumber = (phone: string) => {
+  // Simple validation - check length and make sure it's numeric
+  return phone && phone.length >= 7 && /^\d+$/.test(phone);
+};
 
 export default function Authentication() {
   const { t } = useTranslation();
@@ -27,61 +34,65 @@ export default function Authentication() {
   const [selectedCountryCode, setSelectedCountryCode] = useState("+1");
   const [isLoading, setIsLoading] = useState(false);
   const [showCountryCodeSelector, setShowCountryCodeSelector] = useState(false);
+  const { setError } = useErrorHandler();
 
   // Handle sign up
   const handleSignUp = async () => {
-    if (!phoneNumber || phoneNumber.length < 7) {
+    if (!isValidPhoneNumber(phoneNumber)) {
       Alert.alert(
-        t("authentication.invalidNumber", "Invalid Phone Number"), 
-        t("authentication.enterValidNumber", "Please enter a valid phone number")
+        t('authentication.invalidNumber'),
+        t('authentication.enterValidNumber'),
+        [{ text: t('common.ok') }]
       );
       return;
     }
 
     setIsLoading(true);
+
     try {
-      // Call the API to send verification code
-      const fullPhoneNumber = `${selectedCountryCode}${phoneNumber}`;
-      await sendVerificationCode(fullPhoneNumber);
+      await sendVerificationCode(phoneNumber);
       
-      // Navigate to verification screen
+      // If successful, navigate to verification screen
       router.push({
         pathname: "/(shared)/Verification",
         params: {
-          phoneNumber: fullPhoneNumber,
-          isNeedTranslator: isNeedTranslator.toString(),
+          phoneNumber,
+          isNeedTranslator: isNeedTranslator?.toString() || "true",
         },
       });
     } catch (error) {
-      console.error("Error signing up:", error);
+      console.error("Error sending verification code:", error);
       
-      // For testing: Ask if user wants to proceed anyway with a test code
-      Alert.alert(
-        t("authentication.networkError", "Network Error"),
-        t("authentication.testModePrompt", "Could not connect to the server. Would you like to proceed with a test code?"),
-        [
-          {
-            text: t("common.cancel", "Cancel"),
-            style: "cancel"
-          },
-          {
-            text: t("authentication.useTestCode", "Use Test Code"),
-            onPress: () => {
-              // For testing - hardcoded OTP: 123456
-              console.log("Using test code: 123456");
-              const fullPhoneNumber = `${selectedCountryCode}${phoneNumber}`;
-              router.push({
-                pathname: "/(shared)/Verification",
-                params: {
-                  phoneNumber: fullPhoneNumber,
-                  isNeedTranslator: isNeedTranslator.toString(),
-                  testMode: "true", // Add flag to indicate test mode
-                },
-              });
-            }
-          }
-        ]
-      );
+      if ((error as Error).message === 'No internet connection') {
+        // Let the FallbackHandler show the NoInternet screen
+        setError({ isError: false }); // Reset error state in case it was set
+      } else if ((error as Error).message === 'Server is under maintenance') {
+        // Let the FallbackHandler show the Maintenance screen
+        setError({ isError: false }); // Reset error state in case it was set
+      } else {
+        // Show a test code option for demo purposes
+        Alert.alert(
+          t('authentication.networkError'),
+          t('authentication.testModePrompt'),
+          [
+            {
+              text: t('authentication.useTestCode'),
+              onPress: () => {
+                // Use a test code (123456) and navigate
+                router.push({
+                  pathname: "/(shared)/Verification",
+                  params: {
+                    phoneNumber,
+                    isNeedTranslator: isNeedTranslator?.toString() || "true",
+                    testMode: "true",
+                  },
+                });
+              },
+            },
+            { text: t('common.cancel'), style: "cancel" },
+          ]
+        );
+      }
     } finally {
       setIsLoading(false);
     }
