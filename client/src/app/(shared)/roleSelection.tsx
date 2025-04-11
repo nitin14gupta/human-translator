@@ -24,12 +24,12 @@ export default function RoleSelection() {
       // Navigate to authentication with role parameter
       if (role === "traveler") {
         router.push({
-          pathname: "/(shared)/Authentication",
+          pathname: "/(shared)/register",
           params: { isNeedTranslator: "true" }
         });
       } else {
         router.push({
-          pathname: "/(shared)/Authentication",
+          pathname: "/(shared)/register",
           params: { isNeedTranslator: "false" }
         });
       }

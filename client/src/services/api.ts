@@ -43,12 +43,12 @@ const handleResponse = async (response: Response) => {
 };
 
 // Get auth token from storage
-const getToken = async () => {
+export const getToken = async () => {
   return await AsyncStorage.getItem('authToken');
 };
 
 // Create authenticated headers
-const createAuthHeaders = async () => {
+export const createAuthHeaders = async () => {
   const token = await getToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -80,58 +80,11 @@ export const apiFetch = async (endpoint: string, options?: RequestInit) => {
   }
 };
 
-// Authentication
-export const sendVerificationCode = async (phoneNumber: string) => {
-  try {
-    return await apiFetch('/send-verification-code', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        phone_number: phoneNumber,
-      }),
-    });
-  } catch (error) {
-    console.error('Error sending verification code:', error);
-    throw error;
-  }
-};
-
-export const verifyCode = async (phoneNumber: string, code: string, isNeedTranslator: boolean, language: string = 'en') => {
-  try {
-    const data = await apiFetch('/verify-code', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        phone_number: phoneNumber,
-        code: code,
-        is_traveler: isNeedTranslator,
-        preferred_language: language,
-      }),
-    });
-    
-    // Save token
-    if (data.access_token) {
-      await AsyncStorage.setItem('authToken', data.access_token);
-      await AsyncStorage.setItem('userId', data.user_id.toString());
-      await AsyncStorage.setItem('isNeedTranslator', data.is_traveler.toString());
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('Error verifying code:', error);
-    throw error;
-  }
-};
-
 // User related
 export const getUserProfile = async () => {
   try {
     const headers = await createAuthHeaders();
-    return await apiFetch('/users/me', {
+    return await apiFetch('/api/users/me', {
       method: 'GET',
       headers,
     });
@@ -145,7 +98,7 @@ export const getUserProfile = async () => {
 export const updateUserProfile = async (data: { preferred_language?: string; is_traveler?: boolean }) => {
   try {
     const headers = await createAuthHeaders();
-    return await apiFetch('/users/me', {
+    return await apiFetch('/api/users/me', {
       method: 'PUT',
       headers,
       body: JSON.stringify(data),
@@ -164,12 +117,54 @@ export const updateUserLanguage = async (language: string) => {
 export const getUserLanguage = async () => {
   try {
     const headers = await createAuthHeaders();
-    return await apiFetch('/users/me/language', {
+    return await apiFetch('/api/users/me/language', {
       method: 'GET',
       headers,
     });
   } catch (error) {
     console.error('Error getting user language:', error);
+    throw error;
+  }
+};
+
+// Profile management
+export const getProfileDetails = async () => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/profiles/me', {
+      method: 'GET',
+      headers,
+    });
+  } catch (error) {
+    console.error('Error getting profile details:', error);
+    throw error;
+  }
+};
+
+export const createUserProfile = async (profileData: any) => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/profiles', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(profileData),
+    });
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+    throw error;
+  }
+};
+
+export const updateUserProfileDetails = async (profileData: any) => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/profiles/me', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(profileData),
+    });
+  } catch (error) {
+    console.error('Error updating profile details:', error);
     throw error;
   }
 };

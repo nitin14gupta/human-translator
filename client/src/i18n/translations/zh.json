@@ -1,14 +1,14 @@
 {
   "languageSelection": {
     "title": "选择您的首选语言",
-    "subtitle": "您可以稍后在设置中更改此项。",
+    "subtitle": "您可以稍后在设置中更改此选项。",
     "continueButton": "继续使用{{language}}",
     "loading": "加载中..."
   },
   "roleSelection": {
-    "title": "您是旅行者还是译员？",
+    "title": "您是旅行者还是翻译员？",
     "subtitle": "选择您的角色以定制您的体验。",
-    "needTranslator": "我需要译员",
+    "needTranslator": "我需要翻译员",
     "offerTranslation": "我提供翻译服务"
   },
   "authentication": {
@@ -18,8 +18,8 @@
     "privacyNotice": "未经许可，我们绝不会分享您的详细信息",
     "signUpButton": "安全注册",
     "orContinueWith": "或继续使用",
-    "continueWithGoogle": "使用谷歌继续",
-    "continueWithApple": "使用苹果继续",
+    "continueWithGoogle": "使用Google继续",
+    "continueWithApple": "使用Apple继续",
     "termsPrefix": "注册即表示您同意我们的",
     "terms": "条款",
     "andConnector": "和",
@@ -28,26 +28,74 @@
     "invalidNumber": "无效的电话号码",
     "enterValidNumber": "请输入有效的电话号码",
     "networkError": "网络错误",
-    "testModePrompt": "无法连接到服务器。您想继续使用测试代码吗？",
+    "testModePrompt": "无法连接到服务器。您想使用测试代码继续吗？",
     "useTestCode": "使用测试代码",
     "notImplemented": "未实现",
-    "googleNotImplemented": "此演示中未实现谷歌登录。",
-    "appleNotImplemented": "此演示中未实现苹果登录。"
+    "googleNotImplemented": "Google登录在此演示中未实现。",
+    "appleNotImplemented": "Apple登录在此演示中未实现。"
+  },
+  "login": {
+    "title": "欢迎回来",
+    "subtitle": "登录您的账户",
+    "emailPlaceholder": "电子邮件地址",
+    "passwordPlaceholder": "密码",
+    "forgotPassword": "忘记密码？",
+    "loginButton": "登录",
+    "noAccount": "没有账户？",
+    "signUp": "注册",
+    "rememberMe": "记住我",
+    "invalidCredentials": "电子邮件或密码无效",
+    "accountLocked": "由于多次失败尝试，您的账户已被锁定",
+    "loginSuccess": "登录成功"
+  },
+  "register": {
+    "title": "创建您的账户",
+    "subtitle": "加入我们的翻译社区",
+    "namePlaceholder": "全名",
+    "emailPlaceholder": "电子邮件地址",
+    "passwordPlaceholder": "密码（至少8个字符）",
+    "confirmPasswordPlaceholder": "确认密码",
+    "registerButton": "注册",
+    "haveAccount": "已有账户？",
+    "logIn": "登录",
+    "passwordsDoNotMatch": "密码不匹配",
+    "weakPassword": "密码太弱",
+    "emailInUse": "电子邮件已被使用",
+    "registrationSuccess": "注册成功",
+    "roleSelection": "我是：",
+    "traveler": "旅行者",
+    "translator": "翻译员",
+    "languageSelection": "首选语言："
+  },
+  "forgotPassword": {
+    "title": "忘记密码",
+    "subtitle": "输入您的电子邮件以重置密码",
+    "emailPlaceholder": "电子邮件地址",
+    "resetButton": "发送重置链接",
+    "backToLogin": "返回登录",
+    "checkEmail": "检查您的电子邮件",
+    "emailSent": "我们已向您的电子邮件发送了密码重置说明",
+    "emailNotFound": "未找到电子邮件",
+    "resetSuccess": "密码重置成功",
+    "resetTitle": "重置您的密码",
+    "newPasswordPlaceholder": "新密码",
+    "confirmPasswordPlaceholder": "确认新密码",
+    "confirmResetButton": "重置密码"
   },
   "verification": {
     "title": "验证您的身份",
-    "subtitle": "我们已发送6位数验证码至 {{phoneNumber}}",
-    "resendCode": "没有收到验证码？在 {{timer}} 内重新发送",
+    "subtitle": "我们已向{{phoneNumber}}发送了6位数代码",
+    "resendCode": "没有收到代码？在{{timer}}后重新发送",
     "verifyButton": "验证",
-    "secureNotice": "您的验证是安全且加密的",
+    "secureNotice": "您的验证是安全加密的",
     "invalidCode": "无效代码",
     "enterValidCode": "请输入有效的6位数代码",
     "successTitle": "成功",
     "successMessage": "验证成功！您已注册为{{role}}。",
     "testCodeResent": "测试代码已重新发送",
-    "useTestCode": "请记得使用代码: {{code}}",
+    "useTestCode": "请记得使用代码：{{code}}",
     "codeResent": "代码已重新发送",
-    "newCodeSent": "新的验证码已发送。",
+    "newCodeSent": "新的验证代码已发送。",
     "testCodeReminder": "测试代码提醒",
     "verifyError": "验证代码失败。请重试。",
     "resendError": "重新发送代码失败。请重试。",
@@ -60,16 +108,16 @@
   },
   "terms": {
     "title": "服务条款",
-    "description": "欢迎来到人工翻译。使用我们的应用程序，即表示您同意这些条款，这些条款确保所有用户都有公平和高效的环境。我们的服务旨在实时连接旅行者与翻译员，促进沟通并提供文化指导。用户必须年满18岁并提供准确信息。翻译员必须精通他们提供的语言。所有用户必须尊重他人并遵守当地法律。我们根据我们的隐私政策保护您的数据。我们保留暂停违反这些条款的账户的权利。"
+    "description": "欢迎使用人工翻译。使用我们的应用程序即表示您同意这些条款，这些条款确保为所有用户提供公平和高效的环境。我们的服务旨在实时连接旅行者与翻译员，促进沟通，并提供文化指导。用户必须年满18岁并提供准确信息。翻译员必须精通他们提供的语言。所有用户必须尊重他人并遵守当地法律。我们根据我们的隐私政策保护您的数据。我们保留暂停违反这些条款的账户的权利。"
   },
   "privacyPolicy": {
     "title": "隐私政策",
-    "description": "在人工翻译，我们非常重视您的隐私。我们收集个人信息如电话号码和位置数据仅用于提供我们的翻译服务。您的对话是加密的，除非因质量原因要求，否则不会永久存储。我们使用行业标准的安全措施来保护您的数据。我们不会将您的信息出售给第三方。您可以随时通过应用程序设置访问、修改或删除您的数据。使用我们的服务，即表示您同意此政策。如果您对隐私有疑问，请联系我们的支持团队。"
+    "description": "在人工翻译，我们非常重视您的隐私。我们仅为提供翻译服务而收集电话号码和位置数据等个人信息。您的对话是加密的，除非为质量目的而要求，否则不会永久存储。我们使用行业标准的安全措施来保护您的数据。我们不会将您的信息出售给第三方。您可以随时通过应用程序设置访问、修改或删除您的数据。使用我们的服务即表示您同意此政策。如果您对隐私有任何疑问，请联系我们的支持团队。"
   },
   "tabs": {
     "home": "首页",
     "chat": "聊天",
-    "profile": "个人",
+    "profile": "个人资料",
     "earnings": "收入"
   },
   "languages": {
@@ -81,8 +129,8 @@
     "ja": "日语"
   },
   "error": {
-    "title": "出现错误",
-    "message": "我们在处理您的请求时遇到问题。请稍后再试。",
+    "title": "出了些问题",
+    "message": "我们在处理您的请求时遇到了问题。请稍后再试。",
     "code": "错误代码",
     "whatHappened": "可能发生了什么？",
     "serverIssue": "我们的服务器可能遇到了问题",
@@ -104,18 +152,18 @@
   },
   "maintenance": {
     "title": "计划维护",
-    "message": "我们目前正在进行计划维护以改善我们的服务",
+    "message": "我们目前正在进行计划维护以提升我们的服务",
     "scheduledTime": "预计完成时间",
-    "estimatedTime": "大约 {{time}}",
-    "upgradeInfo": "我们正在升级系统以便更好地为您服务",
-    "apologyMessage": "我们为给您带来的不便道歉",
-    "checkStatus": "查看状态",
+    "estimatedTime": "大约{{time}}后",
+    "upgradeInfo": "我们正在升级系统以更好地为您服务",
+    "apologyMessage": "对于给您带来的不便，我们深表歉意",
+    "checkStatus": "检查状态",
     "tryAgain": "稍后再试"
   },
   "session": {
     "expired": "会话已过期",
     "message": "由于不活动，您的会话已过期",
-    "securityMessage": "为了您的安全，在一段时间不活动后您已被登出",
+    "securityMessage": "为了您的安全，在一段不活动时间后您已被登出",
     "loginAgain": "请重新登录以继续",
     "loginButton": "登录"
   }

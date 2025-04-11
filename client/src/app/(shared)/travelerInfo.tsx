@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,32 +9,75 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
-  Switch
+  FlatList
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '../../context/AuthContext';
+import { updateUserProfileDetails, createUserProfile } from '../../services/api';
+
+// Indian languages list
+const indianLanguages = [
+  "Hindi", "Bengali", "Telugu", "Marathi", "Tamil", "Urdu", "Gujarati", 
+  "Kannada", "Malayalam", "Odia", "Punjabi", "Assamese", "Maithili", 
+  "Sanskrit", "Santali", "Kashmiri", "Nepali", "Konkani", "Sindhi", 
+  "Dogri", "Manipuri", "Bodo"
+];
 
 export default function TravelerInfo() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user } = useAuth();
   
   // State variables
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(user?.name || '');
   const [nationality, setNationality] = useState('');
   const [languagesNeeded, setLanguagesNeeded] = useState('');
   const [emergencyContact, setEmergencyContact] = useState('');
+  const [languageSuggestions, setLanguageSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Travel preferences
-  const [preferences, setPreferences] = useState({
-    localFood: true,
-    culturalSites: true,
-    shopping: false,
-    outdoorActivities: true,
-    nightlife: false
-  });
+  // Filter languages based on input
+  useEffect(() => {
+    if (languagesNeeded.trim()) {
+      const filteredLanguages = indianLanguages.filter(
+        language => language.toLowerCase().includes(languagesNeeded.toLowerCase())
+      );
+      setLanguageSuggestions(filteredLanguages);
+    } else {
+      setLanguageSuggestions([]);
+    }
+  }, [languagesNeeded]);
+  
+  // Add language to the input
+  const selectLanguage = (language: string) => {
+    // Check if there are already languages in the input
+    if (languagesNeeded.trim().includes(',')) {
+      // Extract the languages as a list
+      const languages = languagesNeeded.split(',').map(l => l.trim());
+      // Remove the last partially-typed language
+      languages.pop();
+      // Add the selected language
+      languages.push(language);
+      // Join back with commas
+      setLanguagesNeeded(languages.join(', '));
+    } else {
+      // First language being added
+      setLanguagesNeeded(language);
+    }
+    // Clear suggestions
+    setLanguageSuggestions([]);
+  };
+  
+  // Start typing a new language
+  const startNewLanguage = () => {
+    if (languagesNeeded && !languagesNeeded.endsWith(', ')) {
+      setLanguagesNeeded(languagesNeeded + ', ');
+    }
+  };
   
   // Add profile photo
   const pickImage = async () => {
@@ -62,16 +105,8 @@ export default function TravelerInfo() {
     }
   };
   
-  // Toggle preference
-  const togglePreference = (key: keyof typeof preferences) => {
-    setPreferences({
-      ...preferences,
-      [key]: !preferences[key]
-    });
-  };
-  
   // Complete profile setup
-  const completeProfile = () => {
+  const completeProfile = async () => {
     // Validate inputs
     if (!name.trim()) {
       Alert.alert('Missing Information', 'Please enter your name');
@@ -83,19 +118,33 @@ export default function TravelerInfo() {
       return;
     }
     
-    // Save profile data
-    // In a real app, this would save to a backend or AsyncStorage
-    console.log({
-      profileImage,
-      name,
-      nationality,
-      languagesNeeded,
-      emergencyContact,
-      preferences
-    });
+    setIsLoading(true);
     
-    // Navigate to main app
-    router.replace('/(tabs)/traveler');
+    try {
+      // Prepare profile data
+      const profileData = {
+        bio: `Nationality: ${nationality || 'Not specified'}`,
+        current_location: '',
+        travel_preferences: `Languages needed: ${languagesNeeded}, Emergency contact: ${emergencyContact}`,
+        // If we had an endpoint for profile image, we would include it here
+      };
+      
+      // Create or update profile
+      if (user) {
+        await createUserProfile(profileData);
+        Alert.alert('Success', 'Your traveler profile has been created!');
+        
+        // Navigate to main app
+        router.replace('/(tabs)/traveler');
+      } else {
+        Alert.alert('Error', 'You must be logged in to create a profile');
+      }
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      Alert.alert('Error', 'Failed to create profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -180,7 +229,7 @@ export default function TravelerInfo() {
         {/* Language Needs */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Translation Needs</Text>
-          <Text style={styles.sectionSubtitle}>Which languages do you need help with?</Text>
+          <Text style={styles.sectionSubtitle}>Which languages do you need help with in India?</Text>
           
           <TextInput
             style={styles.input}
@@ -188,85 +237,44 @@ export default function TravelerInfo() {
             placeholderTextColor="#939393"
             value={languagesNeeded}
             onChangeText={setLanguagesNeeded}
+            onEndEditing={() => startNewLanguage()}
           />
-          <Text style={styles.hint}>(e.g., Japanese, Spanish, French)</Text>
-        </View>
-        
-        {/* Travel Preferences */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Travel Preferences</Text>
-          <Text style={styles.sectionSubtitle}>What are you interested in when traveling?</Text>
+          <Text style={styles.hint}>Start typing to see language suggestions</Text>
           
-          <View style={styles.preferenceItem}>
-            <View style={styles.preferenceTextContainer}>
-              <Text style={styles.preferenceName}>Local Food & Restaurants</Text>
-              <Text style={styles.preferenceDescription}>Traditional cuisine and dining experiences</Text>
+          {languageSuggestions.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              <FlatList
+                data={languageSuggestions}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.suggestionItem}
+                    onPress={() => selectLanguage(item)}
+                  >
+                    <Text style={styles.suggestionText}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+                horizontal={false}
+                style={styles.suggestionsList}
+              />
             </View>
-            <Switch
-              value={preferences.localFood}
-              onValueChange={() => togglePreference('localFood')}
-              trackColor={{ false: '#D1D1D6', true: '#B3D4FF' }}
-              thumbColor={preferences.localFood ? '#0066CC' : '#f4f3f4'}
-            />
-          </View>
-          
-          <View style={styles.preferenceItem}>
-            <View style={styles.preferenceTextContainer}>
-              <Text style={styles.preferenceName}>Cultural Sites & Museums</Text>
-              <Text style={styles.preferenceDescription}>Historical places and cultural attractions</Text>
-            </View>
-            <Switch
-              value={preferences.culturalSites}
-              onValueChange={() => togglePreference('culturalSites')}
-              trackColor={{ false: '#D1D1D6', true: '#B3D4FF' }}
-              thumbColor={preferences.culturalSites ? '#0066CC' : '#f4f3f4'}
-            />
-          </View>
-          
-          <View style={styles.preferenceItem}>
-            <View style={styles.preferenceTextContainer}>
-              <Text style={styles.preferenceName}>Shopping</Text>
-              <Text style={styles.preferenceDescription}>Markets, malls, and shopping districts</Text>
-            </View>
-            <Switch
-              value={preferences.shopping}
-              onValueChange={() => togglePreference('shopping')}
-              trackColor={{ false: '#D1D1D6', true: '#B3D4FF' }}
-              thumbColor={preferences.shopping ? '#0066CC' : '#f4f3f4'}
-            />
-          </View>
-          
-          <View style={styles.preferenceItem}>
-            <View style={styles.preferenceTextContainer}>
-              <Text style={styles.preferenceName}>Outdoor Activities</Text>
-              <Text style={styles.preferenceDescription}>Nature, parks, hiking, and adventure</Text>
-            </View>
-            <Switch
-              value={preferences.outdoorActivities}
-              onValueChange={() => togglePreference('outdoorActivities')}
-              trackColor={{ false: '#D1D1D6', true: '#B3D4FF' }}
-              thumbColor={preferences.outdoorActivities ? '#0066CC' : '#f4f3f4'}
-            />
-          </View>
-          
-          <View style={styles.preferenceItem}>
-            <View style={styles.preferenceTextContainer}>
-              <Text style={styles.preferenceName}>Nightlife</Text>
-              <Text style={styles.preferenceDescription}>Bars, clubs, and entertainment</Text>
-            </View>
-            <Switch
-              value={preferences.nightlife}
-              onValueChange={() => togglePreference('nightlife')}
-              trackColor={{ false: '#D1D1D6', true: '#B3D4FF' }}
-              thumbColor={preferences.nightlife ? '#0066CC' : '#f4f3f4'}
-            />
-          </View>
+          )}
         </View>
         
         {/* Complete Profile Button */}
-        <TouchableOpacity style={styles.completeButton} onPress={completeProfile}>
-          <Text style={styles.completeButtonText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+        <TouchableOpacity 
+          style={[styles.completeButton, isLoading && styles.disabledButton]} 
+          onPress={completeProfile}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Text style={styles.completeButtonText}>Creating Profile...</Text>
+          ) : (
+            <>
+              <Text style={styles.completeButtonText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </>
+          )}
         </TouchableOpacity>
         
         {/* Bottom spacing */}
@@ -372,27 +380,25 @@ const styles = StyleSheet.create({
     color: '#939393',
     marginTop: 6,
   },
-  preferenceItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingVertical: 8,
+  suggestionsContainer: {
+    marginTop: 8,
+    maxHeight: 150,
+  },
+  suggestionsList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  suggestionItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  preferenceTextContainer: {
-    flex: 1,
-  },
-  preferenceName: {
+  suggestionText: {
     fontSize: 16,
-    fontWeight: '500',
     color: '#333333',
-  },
-  preferenceDescription: {
-    fontSize: 14,
-    color: '#666666',
-    marginTop: 4,
   },
   completeButton: {
     backgroundColor: '#0066CC',
@@ -402,6 +408,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#99C2E5',
   },
   completeButtonText: {
     color: '#FFFFFF',

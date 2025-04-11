@@ -9,16 +9,20 @@ import {
   ScrollView,
   SafeAreaView,
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '../../context/AuthContext';
+import { createUserProfile } from '../../services/api';
 
 export default function TranslatorInfo() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user } = useAuth();
   
   // State variables
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -31,6 +35,7 @@ export default function TranslatorInfo() {
     technical: false,
     literary: false
   });
+  const [isLoading, setIsLoading] = useState(false);
   
   // Add profile photo
   const pickImage = async () => {
@@ -67,7 +72,7 @@ export default function TranslatorInfo() {
   };
   
   // Complete profile setup
-  const completeProfile = () => {
+  const completeProfile = async () => {
     // Validate inputs
     if (!languages.trim()) {
       Alert.alert('Missing Information', 'Please add languages you speak');
@@ -79,18 +84,44 @@ export default function TranslatorInfo() {
       return;
     }
     
-    // Save profile data
-    // In a real app, this would save to a backend or AsyncStorage
-    console.log({
-      profileImage,
-      languages,
-      hourlyRate,
-      yearsOfExperience,
-      specializations
-    });
+    setIsLoading(true);
     
-    // Navigate to main app
-    router.replace('/(tabs)/translator');
+    try {
+      // Get active specializations
+      const activeSpecializations = Object.entries(specializations)
+        .filter(([_, isActive]) => isActive)
+        .map(([key]) => key)
+        .join(', ');
+        
+      // Prepare profile data
+      const profileData = {
+        bio: `Languages: ${languages}
+Experience: ${yearsOfExperience} years
+Specializations: ${activeSpecializations || 'None specified'}`,
+        hourly_rate: parseFloat(hourlyRate),
+        is_available: true,
+        languages: languages.split(',').map(lang => ({
+          language_code: lang.trim().substring(0, 2).toLowerCase(),
+          proficiency_level: "advanced"
+        }))
+      };
+      
+      // Create or update profile
+      if (user) {
+        await createUserProfile(profileData, profileImage);
+        Alert.alert('Success', 'Your translator profile has been created!');
+        
+        // Navigate to main app
+        router.replace('/(tabs)/translator');
+      } else {
+        Alert.alert('Error', 'You must be logged in to create a profile');
+      }
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      Alert.alert('Error', 'Failed to create profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -142,7 +173,7 @@ export default function TranslatorInfo() {
             value={languages}
             onChangeText={setLanguages}
           />
-          <Text style={styles.hint}>(e.g., French, Gujarati)</Text>
+          <Text style={styles.hint}>(e.g., Hindi, English, Gujarati)</Text>
         </View>
         
         {/* Hourly Rate Section */}
@@ -244,9 +275,22 @@ export default function TranslatorInfo() {
         </View>
         
         {/* Complete Profile Button */}
-        <TouchableOpacity style={styles.completeButton} onPress={completeProfile}>
-          <Text style={styles.completeButtonText}>Complete Profile</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+        <TouchableOpacity 
+          style={[styles.completeButton, isLoading && styles.disabledButton]} 
+          onPress={completeProfile}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#FFFFFF" />
+              <Text style={styles.completeButtonText}>Creating Profile...</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.completeButtonText}>Complete Profile</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </>
+          )}
         </TouchableOpacity>
         
         {/* Bottom spacing */}
@@ -406,6 +450,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 20,
+  },
+  disabledButton: {
+    backgroundColor: '#9BAEFB',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   completeButtonText: {
     color: '#FFFFFF',
