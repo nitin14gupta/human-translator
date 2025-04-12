@@ -20,11 +20,32 @@ export default function Index() {
         const authToken = await AsyncStorage.getItem('authToken');
         const userType = await getUserType(); // This should work even without a fully loaded user object
         
-        console.log('Token existence check:', { hasToken: !!authToken, userType });
+        // Check if this is a first-time user who needs to complete profile setup
+        const needsProfileSetup = await AsyncStorage.getItem('needsProfileSetup');
         
-        // If we have a token, we're authenticated regardless of user object status
+        console.log('Auth checks:', { 
+          hasToken: !!authToken, 
+          userType,
+          needsProfileSetup
+        });
+        
+        // If this is a first-time user who needs to complete profile setup, send them there first
+        if (authToken && needsProfileSetup === 'true') {
+          console.log('First-time user needs to complete profile setup');
+          
+          if (userType === 'traveler') {
+            console.log('Redirecting new traveler to profile setup');
+            router.replace('/(shared)/travelerInfo');
+          } else {
+            console.log('Redirecting new translator to profile setup');
+            router.replace('/(shared)/translatorInfo');
+          }
+          return;
+        }
+        
+        // If we have a token and profile is already set up, go to tabs
         if (authToken) {
-          console.log('Auth token found, redirecting to appropriate tab');
+          console.log('Returning user with auth token, redirecting to appropriate tab');
           
           if (userType === 'traveler') {
             console.log('User is a traveler, redirecting to traveler tabs');

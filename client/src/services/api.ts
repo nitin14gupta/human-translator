@@ -151,18 +151,28 @@ export const createUserProfile = async (profileData: any) => {
       // Remove Content-Type so the browser can set it correctly with the boundary
       delete headers['Content-Type'];
       
-      return await apiFetch('/api/profiles/', {
+      const result = await apiFetch('/api/profiles/', {
         method: 'POST',
         headers,
         body: profileData, // Use FormData directly
       });
+      
+      // Clear the profile setup flag since the user has completed profile creation
+      await AsyncStorage.removeItem('needsProfileSetup');
+      
+      return result;
     } else {
       // For regular JSON data
-      return await apiFetch('/api/profiles/', {
+      const result = await apiFetch('/api/profiles/', {
         method: 'POST',
         headers,
         body: JSON.stringify(profileData),
       });
+      
+      // Clear the profile setup flag since the user has completed profile creation
+      await AsyncStorage.removeItem('needsProfileSetup');
+      
+      return result;
     }
   } catch (error) {
     console.error('Error creating user profile:', error);

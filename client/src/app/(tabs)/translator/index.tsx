@@ -12,323 +12,360 @@ import {
   ActivityIndicator,
   RefreshControl
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { useAuth } from "../../../context/AuthContext";
+import { LinearGradient } from "expo-linear-gradient";
 
-export default function TranslatorHomeScreen() {
+// Mock data for demonstration
+const mockUpcomingBookings = [
+  {
+    id: 1,
+    travelerName: "John Smith",
+    date: "Today, 2:30 PM",
+    duration: 2,
+    status: "confirmed",
+    languages: ["English", "Japanese"],
+  },
+  {
+    id: 2,
+    travelerName: "Maria Garcia",
+    date: "Tomorrow, 10:00 AM",
+    duration: 3,
+    status: "pending",
+    languages: ["English", "Spanish"],
+  },
+  {
+    id: 3,
+    travelerName: "Wei Zhang",
+    date: "May 25, 9:00 AM",
+    duration: 4,
+    status: "confirmed",
+    languages: ["English", "Chinese"],
+  },
+];
+
+export default function TranslatorDashboardScreen() {
   const { t } = useTranslation();
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState("Paris, France");
+  const [availabilityStatus, setAvailabilityStatus] = useState(true);
 
-  // Mock data for pending requests
-  const [pendingRequests, setPendingRequests] = useState([
-    {
-      id: "req1",
-      travelerName: "John Smith",
-      location: "Musée du Louvre",
-      distance: "1.5 km",
-      time: "10:30 AM",
-      languages: ["English", "French"],
-      urgent: true
-    },
-    {
-      id: "req2",
-      travelerName: "Maria Rodriguez",
-      location: "Champs-Élysées",
-      distance: "3.2 km",
-      time: "12:45 PM",
-      languages: ["Spanish", "French"],
-      urgent: false
-    }
-  ]);
-
-  // Mock data for upcoming sessions
-  const [upcomingSessions, setUpcomingSessions] = useState([
-    {
-      id: "sess1",
-      travelerName: "Michael Chen",
-      location: "Eiffel Tower",
-      date: "Tomorrow",
-      time: "09:00 AM",
-      languages: ["Chinese", "French", "English"],
-      confirmed: true
-    }
-  ]);
+  // Earnings stats
+  const earningsStats = {
+    thisMonth: 1240,
+    lastMonth: 980,
+    pending: 350,
+    totalJobs: 42,
+    avgRating: 4.8,
+  };
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    
-    // Simulate fetching data
     setTimeout(() => {
       setRefreshing(false);
-    }, 1500);
+    }, 2000);
   }, []);
 
-  const handleAvailabilityToggle = (value) => {
-    setIsAvailable(value);
-    
-    // Show confirmation message
-    if (value) {
-      Alert.alert(
-        "You're Now Available",
-        "You'll now receive translation requests from travelers in your area."
-      );
-    } else {
-      Alert.alert(
-        "You're Now Offline",
-        "You won't receive new translation requests until you go online again."
-      );
-    }
+  const toggleAvailability = () => {
+    setAvailabilityStatus(!availabilityStatus);
   };
-
-  const handleAcceptRequest = (requestId) => {
-    // Filter out the accepted request and update state
-    const updatedRequests = pendingRequests.filter(req => req.id !== requestId);
-    setPendingRequests(updatedRequests);
-    
-    // Add to upcoming sessions
-    const acceptedRequest = pendingRequests.find(req => req.id === requestId);
-    if (acceptedRequest) {
-      const newSession = {
-        id: `sess${Date.now()}`,
-        travelerName: acceptedRequest.travelerName,
-        location: acceptedRequest.location,
-        date: "Today",
-        time: acceptedRequest.time,
-        languages: acceptedRequest.languages,
-        confirmed: true
-      };
-      
-      setUpcomingSessions([...upcomingSessions, newSession]);
-      
-      Alert.alert(
-        "Request Accepted",
-        `You have accepted a translation request from ${acceptedRequest.travelerName}. They will be notified.`
-      );
-    }
-  };
-
-  const handleDeclineRequest = (requestId) => {
-    // Filter out the declined request
-    const updatedRequests = pendingRequests.filter(req => req.id !== requestId);
-    setPendingRequests(updatedRequests);
-    
-    Alert.alert(
-      "Request Declined",
-      "The request has been declined and removed from your list."
-    );
-  };
-
-  const handleSessionDetails = (sessionId) => {
-    Alert.alert(
-      "Session Details",
-      "The full session details feature will be implemented in a future update."
-    );
-  };
-
-  // Render a pending request item
-  const renderRequestItem = (request) => (
-    <TouchableOpacity 
-      key={request.id} 
-      style={styles.requestCard}
-      onPress={() => handleSessionDetails(request.id)}
-    >
-      <View style={styles.requestHeader}>
-        <Text style={styles.travelerName}>{request.travelerName}</Text>
-        {request.urgent && (
-          <View style={styles.urgentBadge}>
-            <Text style={styles.urgentText}>Urgent</Text>
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.requestDetail}>
-        <Ionicons name="location-outline" size={16} color="#666" />
-        <Text style={styles.requestDetailText}>{request.location}</Text>
-        <Text style={styles.distanceText}>{request.distance}</Text>
-      </View>
-      
-      <View style={styles.requestDetail}>
-        <Ionicons name="time-outline" size={16} color="#666" />
-        <Text style={styles.requestDetailText}>{request.time}</Text>
-      </View>
-      
-      <View style={styles.requestDetail}>
-        <MaterialIcons name="translate" size={16} color="#666" />
-        <Text style={styles.requestDetailText}>
-          {request.languages.join(" → ")}
-        </Text>
-      </View>
-      
-      <View style={styles.requestActions}>
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.acceptButton]}
-          onPress={() => handleAcceptRequest(request.id)}
-        >
-          <Text style={styles.acceptButtonText}>Accept</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.declineButton]}
-          onPress={() => handleDeclineRequest(request.id)}
-        >
-          <Text style={styles.declineButtonText}>Decline</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // Render an upcoming session item
-  const renderSessionItem = (session) => (
-    <TouchableOpacity 
-      key={session.id} 
-      style={styles.sessionCard}
-      onPress={() => handleSessionDetails(session.id)}
-    >
-      <View style={styles.sessionHeader}>
-        <Text style={styles.travelerName}>{session.travelerName}</Text>
-        <View style={styles.confirmedBadge}>
-          <Text style={styles.confirmedText}>Confirmed</Text>
-        </View>
-      </View>
-      
-      <View style={styles.sessionDetail}>
-        <Ionicons name="location-outline" size={16} color="#666" />
-        <Text style={styles.sessionDetailText}>{session.location}</Text>
-      </View>
-      
-      <View style={styles.sessionDetail}>
-        <Ionicons name="calendar-outline" size={16} color="#666" />
-        <Text style={styles.sessionDetailText}>{session.date}, {session.time}</Text>
-      </View>
-      
-      <View style={styles.sessionDetail}>
-        <MaterialIcons name="translate" size={16} color="#666" />
-        <Text style={styles.sessionDetailText}>
-          {session.languages.join(" → ")}
-        </Text>
-      </View>
-      
-      <TouchableOpacity style={styles.viewDetailsButton}>
-        <Text style={styles.viewDetailsText}>View Details</Text>
-        <Ionicons name="chevron-forward" size={16} color="#007BFF" />
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
-
-  // Render empty state for requests
-  const renderEmptyRequests = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="notifications-outline" size={40} color="#CCC" />
-      <Text style={styles.emptyTitle}>No Pending Requests</Text>
-      <Text style={styles.emptyDescription}>
-        New translation requests will appear here when travelers need your help.
-      </Text>
-    </View>
-  );
-
-  // Render empty state for sessions
-  const renderEmptySessions = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="calendar-outline" size={40} color="#CCC" />
-      <Text style={styles.emptyTitle}>No Upcoming Sessions</Text>
-      <Text style={styles.emptyDescription}>
-        Your scheduled translation sessions will appear here.
-      </Text>
-    </View>
-  );
 
   return (
-    <ScrollView 
-      style={styles.container}
+    <ScrollView
+      className="flex-1 bg-neutral-gray-100"
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      {/* Translator Status Bar */}
-      <View style={styles.statusBar}>
-        <View style={styles.statusLeft}>
-          <Text style={styles.statusTitle}>
-            {isAvailable ? "You're Available" : "You're Offline"}
+      {/* Dashboard Header with Availability Toggle */}
+      <LinearGradient
+        colors={["#007BFF", "#0056b3"]}
+        className="px-5 pt-4 pb-6 rounded-b-3xl"
+      >
+        <View className="flex-row justify-between items-center">
+          <Text className="text-white text-lg font-medium">
+            {t("dashboard.welcome")}
+            {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
           </Text>
-          <Text style={styles.statusDescription}>
-            {isAvailable 
-              ? "Receiving translation requests" 
-              : "Not receiving new requests"}
-          </Text>
+          <TouchableOpacity
+            onPress={toggleAvailability}
+            className={`py-1 px-3 rounded-full ${
+              availabilityStatus
+                ? "bg-success bg-opacity-20"
+                : "bg-neutral-gray-700 bg-opacity-30"
+            }`}
+          >
+            <Text
+              className={`text-sm font-medium ${
+                availabilityStatus ? "text-white" : "text-neutral-gray-300"
+              }`}
+            >
+              {availabilityStatus ? "Available" : "Unavailable"}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <Switch
-          value={isAvailable}
-          onValueChange={handleAvailabilityToggle}
-          trackColor={{ false: "#ddd", true: "#bbd6ff" }}
-          thumbColor={isAvailable ? "#007BFF" : "#f4f3f4"}
-        />
-      </View>
 
-      {/* Current Location */}
-      <View style={styles.locationContainer}>
-        <Ionicons name="location" size={20} color="#007BFF" />
-        <Text style={styles.locationText}>Current location: </Text>
-        <Text style={styles.locationValue}>{currentLocation}</Text>
-        <TouchableOpacity style={styles.locationUpdate}>
-          <Text style={styles.locationUpdateText}>Update</Text>
+        {/* Earnings Preview */}
+        <View className="mt-4 bg-white bg-opacity-15 p-4 rounded-xl">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-white text-opacity-90 text-base font-medium">
+              {t("dashboard.earnings")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/(tabs)/translator/earnings")}
+              className="flex-row items-center"
+            >
+              <Text className="text-white text-opacity-80 text-sm mr-1">
+                {t("common.details")}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color="white" />
+            </TouchableOpacity>
+          </View>
+          <Text className="text-white text-3xl font-bold mt-2">
+            ${earningsStats.thisMonth}
+          </Text>
+          <Text className="text-white text-opacity-80 text-sm">
+            {t("dashboard.thisMonth")}
+          </Text>
+
+          <View className="flex-row justify-between mt-4">
+            <View className="items-center">
+              <Text className="text-white text-opacity-90 text-sm">
+                {t("dashboard.pending")}
+              </Text>
+              <Text className="text-white font-bold mt-1">
+                ${earningsStats.pending}
+              </Text>
+            </View>
+            <View className="items-center">
+              <Text className="text-white text-opacity-90 text-sm">
+                {t("dashboard.jobs")}
+              </Text>
+              <Text className="text-white font-bold mt-1">
+                {earningsStats.totalJobs}
+              </Text>
+            </View>
+            <View className="items-center">
+              <Text className="text-white text-opacity-90 text-sm">
+                {t("dashboard.rating")}
+              </Text>
+              <View className="flex-row items-center mt-1">
+                <Text className="text-white font-bold">
+                  {earningsStats.avgRating}
+                </Text>
+                <Ionicons
+                  name="star"
+                  size={12}
+                  color="white"
+                  style={{ marginLeft: 2 }}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Quick Actions */}
+      <View className="flex-row justify-between mx-4 -mt-5">
+        <TouchableOpacity className="bg-white rounded-xl shadow-sm p-3 flex-1 mr-3 items-center">
+          <View className="bg-primary bg-opacity-10 rounded-full p-2 mb-2">
+            <Ionicons name="calendar-outline" size={24} color="#007BFF" />
+          </View>
+          <Text className="text-sm font-medium text-neutral-gray-800">
+            {t("dashboard.manageSchedule")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="bg-white rounded-xl shadow-sm p-3 flex-1 items-center">
+          <View className="bg-primary bg-opacity-10 rounded-full p-2 mb-2">
+            <Ionicons name="cash-outline" size={24} color="#007BFF" />
+          </View>
+          <Text className="text-sm font-medium text-neutral-gray-800">
+            {t("dashboard.withdrawal")}
+          </Text>
         </TouchableOpacity>
       </View>
-      
-      {/* Income Summary */}
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>€450</Text>
-            <Text style={styles.summaryLabel}>This Week</Text>
+
+      {/* Today's Overview */}
+      <View className="mx-4 mt-6">
+        <Text className="text-lg font-bold text-neutral-gray-800 mb-3">
+          {t("dashboard.todayOverview")}
+        </Text>
+        <View className="flex-row">
+          <View className="bg-white rounded-xl shadow-sm p-4 flex-1 mr-3">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-sm text-neutral-gray-600">
+                {t("dashboard.upcomingBookings")}
+              </Text>
+              <MaterialCommunityIcons
+                name="calendar-clock"
+                size={20}
+                color="#007BFF"
+              />
+            </View>
+            <Text className="text-2xl font-bold text-neutral-gray-800 mt-1">
+              {
+                mockUpcomingBookings.filter(
+                  (booking) => booking.date.includes("Today")
+                ).length
+              }
+            </Text>
           </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>48</Text>
-            <Text style={styles.summaryLabel}>Total Sessions</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>4.8</Text>
-            <Text style={styles.summaryLabel}>Rating</Text>
+
+          <View className="bg-white rounded-xl shadow-sm p-4 flex-1">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-sm text-neutral-gray-600">
+                {t("dashboard.requests")}
+              </Text>
+              <Ionicons name="notifications-outline" size={20} color="#FF8800" />
+            </View>
+            <Text className="text-2xl font-bold text-neutral-gray-800 mt-1">
+              {
+                mockUpcomingBookings.filter(
+                  (booking) => booking.status === "pending"
+                ).length
+              }
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* Pending Translation Requests */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Pending Requests</Text>
-        {pendingRequests.length > 0 ? (
-          pendingRequests.map(renderRequestItem)
-        ) : (
-          renderEmptyRequests()
-        )}
+      {/* Weekly Stats */}
+      <View className="mx-4 mt-6">
+        <Text className="text-lg font-bold text-neutral-gray-800 mb-3">
+          {t("dashboard.weeklyStats")}
+        </Text>
+        <View className="bg-white rounded-xl shadow-sm p-4">
+          <View className="flex-row justify-between items-center mb-6">
+            <View className="items-center">
+              <Text className="text-sm text-neutral-gray-600 mb-1">
+                {t("dashboard.earnings")}
+              </Text>
+              <Text className="text-lg font-bold text-neutral-gray-800">
+                $340
+              </Text>
+            </View>
+            <View className="items-center">
+              <Text className="text-sm text-neutral-gray-600 mb-1">
+                {t("dashboard.jobs")}
+              </Text>
+              <Text className="text-lg font-bold text-neutral-gray-800">12</Text>
+            </View>
+            <View className="items-center">
+              <Text className="text-sm text-neutral-gray-600 mb-1">
+                {t("dashboard.hours")}
+              </Text>
+              <Text className="text-lg font-bold text-neutral-gray-800">24</Text>
+            </View>
+          </View>
+
+          {/* Simplified Chart (Visual Representation) */}
+          <View className="h-20 flex-row items-end justify-between mt-2">
+            {[40, 65, 30, 80, 55, 45, 60].map((height, index) => (
+              <View key={index} className="flex-1 items-center">
+                <View
+                  className="bg-primary rounded-t-md"
+                  style={{ height: height, maxHeight: 80 }}
+                />
+                <Text className="text-xs text-neutral-gray-600 mt-1">
+                  {["M", "T", "W", "T", "F", "S", "S"][index]}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </View>
 
-      {/* Upcoming Sessions */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
-        {upcomingSessions.length > 0 ? (
-          upcomingSessions.map(renderSessionItem)
-        ) : (
-          renderEmptySessions()
-        )}
-      </View>
-      
-      {/* Marketing Section */}
-      <TouchableOpacity style={styles.marketingCard}>
-        <View style={styles.marketingContent}>
-          <Text style={styles.marketingTitle}>Boost Your Visibility</Text>
-          <Text style={styles.marketingDescription}>
-            Enhance your profile and get more translation requests with a premium subscription.
+      {/* Upcoming Bookings */}
+      <View className="mx-4 mt-6 mb-8">
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-lg font-bold text-neutral-gray-800">
+            {t("dashboard.upcomingBookings")}
           </Text>
+          <TouchableOpacity
+            onPress={() => router.push("/translator/requests")}
+          >
+            <Text className="text-primary">See All</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.marketingButton}>
-          <Text style={styles.marketingButtonText}>Learn More</Text>
-        </TouchableOpacity>
-      </TouchableOpacity>
+
+        {mockUpcomingBookings.map((booking) => (
+          <TouchableOpacity
+            key={booking.id}
+            className="bg-white rounded-xl shadow-sm p-4 mb-3"
+          >
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base font-semibold text-neutral-gray-800">
+                {booking.travelerName}
+              </Text>
+              <View
+                className={`py-1 px-2 rounded-full ${
+                  booking.status === "confirmed"
+                    ? "bg-success bg-opacity-10"
+                    : "bg-warning bg-opacity-10"
+                }`}
+              >
+                <Text
+                  className={`text-xs font-medium ${
+                    booking.status === "confirmed"
+                      ? "text-success"
+                      : "text-warning"
+                  }`}
+                >
+                  {booking.status === "confirmed" ? "Confirmed" : "Pending"}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center mt-2">
+              <Ionicons name="time-outline" size={16} color="#6C757D" />
+              <Text className="text-sm text-neutral-gray-600 ml-1">
+                {booking.date} • {booking.duration} hours
+              </Text>
+            </View>
+
+            <View className="flex-row items-center mt-1">
+              <Ionicons name="language-outline" size={16} color="#6C757D" />
+              <Text className="text-sm text-neutral-gray-600 ml-1">
+                {booking.languages.join(" → ")}
+              </Text>
+            </View>
+
+            <View className="flex-row justify-between mt-3 pt-2 border-t border-neutral-gray-200">
+              <TouchableOpacity className="flex-row items-center">
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={16}
+                  color="#007BFF"
+                />
+                <Text className="ml-1 text-sm text-primary">
+                  {booking.status === "pending" ? "Accept" : "View Details"}
+                </Text>
+              </TouchableOpacity>
+
+              {booking.status === "pending" && (
+                <TouchableOpacity className="flex-row items-center">
+                  <Ionicons name="close-circle-outline" size={16} color="red" />
+                  <Text className="ml-1 text-sm text-error">Decline</Text>
+                </TouchableOpacity>
+              )}
+
+              {booking.status === "confirmed" && (
+                <TouchableOpacity className="flex-row items-center">
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={16}
+                    color="#007BFF"
+                  />
+                  <Text className="ml-1 text-sm text-primary">Message</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
     </ScrollView>
   );
 }

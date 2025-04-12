@@ -248,6 +248,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await AsyncStorage.setItem('userEmail', userData.email);
         await AsyncStorage.setItem('userName', userData.name);
         
+        // Add flag to indicate this is a new user who needs to set up profile
+        await AsyncStorage.setItem('needsProfileSetup', 'true');
+        
         setUser({
           id: data.user_id.toString(),
           email: userData.email,
