@@ -86,12 +86,12 @@ export default function Login() {
 
   // Navigate to registration screen
   const goToRegister = () => {
-    router.push("/(shared)/register");
+    router.push("/(auth)/register");
   };
 
   // Navigate to forgot password screen
   const goToForgotPassword = () => {
-    router.push("/(shared)/forgotPassword");
+    router.push("/(auth)/forgotPassword");
   };
 
   return (

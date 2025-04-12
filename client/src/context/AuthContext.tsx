@@ -1,146 +1,114 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiFetch } from '../services/api';
+import { loginUser, registerUser, resetPassword as resetPasswordApi, getUserType as getUserTypeApi } from '../services/api';
 
-// Define user data type
-type User = {
+// Define auth tokens storage keys
+const AUTH_TOKEN_KEY = 'authToken';
+const USER_DATA_KEY = 'userData';
+
+// User type interface
+interface User {
   id: string;
-  email: string;
   name: string;
-  isTraveler: boolean;
-  preferredLanguage: string;
-};
+  email: string;
+  is_traveler: boolean;
+  preferred_language?: string;
+  profile_image?: string;
+}
 
-// Define auth context type
-type AuthContextType = {
+// Registration data interface
+interface RegistrationData {
+  name: string;
+  email: string;
+  password: string;
+  confirm_password: string;
+  is_traveler: boolean;
+  preferred_language?: string;
+}
+
+// Auth context interface
+interface AuthContextType {
   user: User | null;
+  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  register: (data: RegistrationData) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  confirmResetPassword: (token: string, newPassword: string) => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
   getUserType: () => Promise<'traveler' | 'translator' | null>;
-  updateLanguage: (language: string) => Promise<void>;
-};
+}
 
-// Define register data type
-type RegisterData = {
-  email: string;
-  name: string;
-  password: string;
-  confirm_password?: string;
-  is_traveler: boolean;
-  preferred_language: string;
-};
+// Create the auth context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create the context with default values
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isLoading: true,
-  isAuthenticated: false,
-  login: async () => {},
-  register: async () => {},
-  logout: async () => {},
-  resetPassword: async () => {},
-  confirmResetPassword: async () => {},
-  getUserType: async () => null,
-  updateLanguage: async () => {},
-});
+// Auth provider props
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-// AuthProvider component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+// Auth provider component
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load user data on mount
+  // Check if user is authenticated
+  const isAuthenticated = !!user && !!token;
+
+  // Load user data and token from storage on component mount
   useEffect(() => {
-    const loadUser = async () => {
+    const loadUserFromStorage = async () => {
       try {
-        const userData = await getUserFromStorage();
-        if (userData) {
-          setUser(userData);
+        const storedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+        const storedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
+
+        if (storedToken && storedUserData) {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUserData));
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error('Error loading auth data from storage:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadUser();
+    loadUserFromStorage();
   }, []);
 
-  // Helper function to get user from storage
-  const getUserFromStorage = async (): Promise<User | null> => {
+  // Get user type (traveler or translator)
+  const getUserType = async (): Promise<'traveler' | 'translator' | null> => {
+    if (!user) return null;
+    
     try {
-      const userId = await AsyncStorage.getItem('userId');
-      const isTravelerStr = await AsyncStorage.getItem('isNeedTranslator');
-      
-      if (!userId) return null;
-      
-      // Fetch user profile from API
-      const headers = await createAuthHeaders();
-      const userData = await apiFetch('/users/me', {
-        method: 'GET',
-        headers,
-      });
-      
-      return {
-        id: userId,
-        email: userData.email,
-        name: userData.name,
-        isTraveler: isTravelerStr === 'true',
-        preferredLanguage: userData.preferred_language,
-      };
+      // Use the API to get user type
+      const response = await getUserTypeApi();
+      return response.user_type;
     } catch (error) {
-      console.error('Error getting user from storage:', error);
-      return null;
+      console.error('Error getting user type:', error);
+      // Fallback to local data
+      return user.is_traveler ? 'traveler' : 'translator';
     }
-  };
-
-  // Create authenticated headers
-  const createAuthHeaders = async () => {
-    const token = await AsyncStorage.getItem('authToken');
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    return headers;
   };
 
   // Login function
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const data = await apiFetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+      // Call the login API
+      const response = await loginUser({ email, password });
       
-      // Save token and user info
-      if (data.access_token) {
-        await AsyncStorage.setItem('authToken', data.access_token);
-        await AsyncStorage.setItem('userId', data.user_id.toString());
-        await AsyncStorage.setItem('isNeedTranslator', data.is_traveler.toString());
-        
-        // Get user profile
-        const userData = await getUserFromStorage();
-        setUser(userData);
-      }
+      // Save to state
+      setToken(response.token);
+      setUser(response.user);
+      
+      // Save to storage
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.user));
     } catch (error) {
-      console.error('Error logging in:', error);
+      console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -148,33 +116,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Register function
-  const register = async (userData: RegisterData) => {
+  const register = async (data: RegistrationData): Promise<void> => {
     setIsLoading(true);
     try {
-      const data = await apiFetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
+      // Call the register API
+      const response = await registerUser(data);
       
-      // If registration automatically logs in the user
-      if (data.access_token) {
-        await AsyncStorage.setItem('authToken', data.access_token);
-        await AsyncStorage.setItem('userId', data.user_id.toString());
-        await AsyncStorage.setItem('isNeedTranslator', userData.is_traveler.toString());
-        
-        setUser({
-          id: data.user_id.toString(),
-          email: userData.email,
-          name: userData.name,
-          isTraveler: userData.is_traveler,
-          preferredLanguage: userData.preferred_language,
-        });
-      }
+      // Save to state
+      setToken(response.token);
+      setUser(response.user);
+      
+      // Save to storage
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.user));
     } catch (error) {
-      console.error('Error registering user:', error);
+      console.error('Registration error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -182,118 +138,92 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Logout function
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // Remove token and user info from storage
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('userId');
-      await AsyncStorage.removeItem('isNeedTranslator');
+      // Clear storage
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+      await AsyncStorage.removeItem(USER_DATA_KEY);
+      
+      // Clear state
+      setToken(null);
       setUser(null);
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Logout error:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Reset password function
-  const resetPassword = async (email: string) => {
+  // Password reset function
+  const resetPassword = async (email: string): Promise<void> => {
+    setIsLoading(true);
     try {
-      return await apiFetch('/api/reset-password-request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
+      // Call the reset password API
+      await resetPasswordApi(email);
     } catch (error) {
-      console.error('Error requesting password reset:', error);
+      console.error('Password reset error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Confirm password reset function
-  const confirmResetPassword = async (token: string, newPassword: string) => {
-    try {
-      return await apiFetch('/api/reset-password-confirm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          new_password: newPassword,
-        }),
-      });
-    } catch (error) {
-      console.error('Error confirming password reset:', error);
-      throw error;
+  // Update user function
+  const updateUser = async (userData: Partial<User>): Promise<void> => {
+    if (!user || !token) {
+      throw new Error('Not authenticated');
     }
-  };
 
-  // Get user type function
-  const getUserType = async (): Promise<'traveler' | 'translator' | null> => {
+    setIsLoading(true);
     try {
-      const isTravelerStr = await AsyncStorage.getItem('isNeedTranslator');
-      if (isTravelerStr === null) return null;
+      // For now, we just update local state and storage
+      // In a real app, you would call an API endpoint to update the user data
       
-      return isTravelerStr === 'true' ? 'traveler' : 'translator';
-    } catch (error) {
-      console.error('Error getting user type:', error);
-      return null;
-    }
-  };
-
-  // Update language preference
-  const updateLanguage = async (language: string) => {
-    try {
-      // Set language preference locally first
-      await AsyncStorage.setItem('userLanguage', language);
+      // Update state with merged user data
+      const updatedUser = {
+        ...user,
+        ...userData,
+      };
       
-      // If user is logged in, update on server
-      if (user) {
-        const headers = await createAuthHeaders();
-        const data = await apiFetch('/api/users/me', {
-          method: 'PUT',
-          headers,
-          body: JSON.stringify({ preferred_language: language }),
-        });
-        
-        // Update user object with new language preference
-        setUser({
-          ...user,
-          preferredLanguage: language,
-        });
-      }
+      setUser(updatedUser);
+      
+      // Update storage
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedUser));
     } catch (error) {
-      console.error('Error updating language:', error);
+      console.error('Update user error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        register,
-        logout,
-        resetPassword,
-        confirmResetPassword,
-        getUserType,
-        updateLanguage,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    token,
+    isLoading,
+    isAuthenticated,
+    login,
+    register,
+    logout,
+    resetPassword,
+    updateUser,
+    getUserType,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Custom hook to use auth context
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  
+  return context;
+};
 
 export default AuthContext;

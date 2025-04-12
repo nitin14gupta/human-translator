@@ -1,180 +1,96 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 
-// In React Native, 'localhost' refers to the device itself, not your computer
-// For Android emulator, use 10.0.2.2 to reach your computer's localhost
-// For iOS simulator, localhost works
-// For physical devices, use your computer's actual IP address on the network
-const getApiBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    // Android emulator special IP for host machine
-    return 'http://10.0.2.2:8000';
-  } else if (Platform.OS === 'ios') {
-    // iOS simulator can use localhost
-    return 'http://localhost:8000';
-  } else {
-    // For web or other platforms
-    return 'http://localhost:8000';
-  }
+// API base URL - adjust as needed for your environment
+export const getApiBaseUrl = (): string => {
+  // For development, you can switch this based on environment
+  return 'http://localhost:5000';
 };
 
-const API_URL = getApiBaseUrl();
-
-// Network state information
-let isOffline = false;
-let isServerMaintenance = false;
-
-// Helper function to handle responses
-const handleResponse = async (response: Response) => {
-  // Check for maintenance mode
-  if (response.status === 503) {
-    isServerMaintenance = true;
-    throw new Error('Server is under maintenance');
-  }
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      detail: `Error: ${response.status} ${response.statusText}`
-    }));
-    throw new Error(error.detail || 'An error occurred');
-  }
-  
-  return response.json();
-};
-
-// Get auth token from storage
-export const getToken = async () => {
-  return await AsyncStorage.getItem('authToken');
-};
-
-// Create authenticated headers
-export const createAuthHeaders = async () => {
-  const token = await getToken();
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  return headers;
-};
-
-// Wrapper for fetch with error handling
-export const apiFetch = async (endpoint: string, options?: RequestInit) => {
+// Generic API call function with authentication
+export const apiCall = async (
+  endpoint: string,
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
+  data?: any
+) => {
   try {
-    if (isOffline) {
-      throw new Error('No internet connection');
+    const token = await AsyncStorage.getItem('authToken');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const options: RequestInit = {
+      method,
+      headers,
+    };
+
+    if (data) {
+      options.body = JSON.stringify(data);
+    }
+
+    // Make the actual API call
+    console.log(`API call to ${endpoint} with method ${method}`, data);
+    
+    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, options);
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || 'API request failed');
     }
     
-    if (isServerMaintenance) {
-      throw new Error('Server is under maintenance');
-    }
-    
-    const response = await fetch(`${API_URL}${endpoint}`, options);
-    return await handleResponse(response);
+    return responseData;
   } catch (error) {
-    // Re-throw the error for the component to handle
+    console.error('API call error:', error);
     throw error;
   }
 };
 
-// User related
-export const getUserProfile = async () => {
-  try {
-    const headers = await createAuthHeaders();
-    return await apiFetch('/api/users/me', {
-      method: 'GET',
-      headers,
-    });
-  } catch (error) {
-    console.error('Error getting user profile:', error);
-    throw error;
-  }
+// Auth service functions
+export const registerUser = async (userData: {
+  name: string;
+  email: string;
+  password: string;
+  confirm_password: string;
+  is_traveler: boolean;
+  preferred_language?: string;
+}) => {
+  return apiCall('/api/auth/register', 'POST', userData);
 };
 
-// Update user profile data
-export const updateUserProfile = async (data: { preferred_language?: string; is_traveler?: boolean }) => {
-  try {
-    const headers = await createAuthHeaders();
-    return await apiFetch('/api/users/me', {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(data),
-    });
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    throw error;
-  }
+export const loginUser = async (credentials: { email: string; password: string }) => {
+  return apiCall('/api/auth/login', 'POST', credentials);
 };
 
-// Language preferences
-export const updateUserLanguage = async (language: string) => {
-  return updateUserProfile({ preferred_language: language });
+export const resetPassword = async (email: string) => {
+  return apiCall('/api/auth/reset-password', 'POST', { email });
 };
 
-export const getUserLanguage = async () => {
-  try {
-    const headers = await createAuthHeaders();
-    return await apiFetch('/api/users/me/language', {
-      method: 'GET',
-      headers,
-    });
-  } catch (error) {
-    console.error('Error getting user language:', error);
-    throw error;
-  }
+export const confirmResetPassword = async (token: string, password: string, confirm_password: string) => {
+  return apiCall(`/api/auth/reset-password/${token}`, 'POST', { password, confirm_password });
 };
 
-// Profile management
-export const getProfileDetails = async () => {
-  try {
-    const headers = await createAuthHeaders();
-    return await apiFetch('/api/profiles/me', {
-      method: 'GET',
-      headers,
-    });
-  } catch (error) {
-    console.error('Error getting profile details:', error);
-    throw error;
-  }
+export const getUserType = async () => {
+  return apiCall('/api/auth/user-type', 'GET');
 };
 
+// User profile functions
 export const createUserProfile = async (profileData: any) => {
-  try {
-    const headers = await createAuthHeaders();
-    return await apiFetch('/api/profiles', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(profileData),
-    });
-  } catch (error) {
-    console.error('Error creating user profile:', error);
-    throw error;
-  }
+  return apiCall('/api/profiles/traveler', 'POST', profileData);
 };
 
-export const updateUserProfileDetails = async (profileData: any) => {
-  try {
-    const headers = await createAuthHeaders();
-    return await apiFetch('/api/profiles/me', {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(profileData),
-    });
-  } catch (error) {
-    console.error('Error updating profile details:', error);
-    throw error;
-  }
+export const updateUserProfileDetails = async (userId: string, profileData: any) => {
+  return apiCall(`/api/profiles/traveler/${userId}`, 'PATCH', profileData);
 };
 
-// Set offline status for testing or when NetInfo detects offline
-export const setOfflineStatus = (status: boolean) => {
-  isOffline = status;
+// Translator profile functions
+export const createTranslatorProfile = async (profileData: any) => {
+  return apiCall('/api/profiles/translator', 'POST', profileData);
 };
 
-// Set maintenance status for testing
-export const setMaintenanceStatus = (status: boolean) => {
-  isServerMaintenance = status;
+export const updateTranslatorProfile = async (profileId: string, profileData: any) => {
+  return apiCall(`/api/profiles/translator/${profileId}`, 'PATCH', profileData);
 }; 

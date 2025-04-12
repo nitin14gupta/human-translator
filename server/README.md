@@ -1,91 +1,117 @@
-# Human Translator API
+# Human Translator App - Flask Backend
 
-Flask backend for the Human Translator application, providing API endpoints for traveler and translator users.
-
-## Features
-
-- User authentication (register, login, logout)
-- Password reset functionality
-- JWT token-based authentication
-- User profile management
-- Support for both traveler and translator user types
-- Multi-language support
+This is the backend server for the Human Translator app, built with Flask and PostgreSQL.
 
 ## Setup
 
 ### Prerequisites
 
 - Python 3.8+
-- PostgreSQL 12+
+- PostgreSQL database
+- pip (Python package manager)
 
-### Installation
+### Database Setup
 
-1. Clone the repository
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+1. Create a PostgreSQL database:
    ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Create a PostgreSQL database:
-   ```bash
    createdb human_translator
    ```
-5. Create a `.env` file with your configuration (copy from `.env.example`):
-   ```bash
-   cp .env.example .env
-   # Edit the .env file with your database credentials and secret keys
+
+2. Import the schema:
    ```
-6. Initialize the database:
-   ```bash
-   psql -d human_translator -f table.sql
-   ```
-7. Initialize Flask migrations:
-   ```bash
-   flask db init
-   flask db migrate -m "Initial migration"
-   flask db upgrade
+   psql -d human_translator -f tables.sql
    ```
 
-### Running the Server
+### Environment Setup
 
-```bash
-flask run --host=0.0.0.0 --port=8000
-```
+1. Create a virtual environment:
+   ```
+   python -m venv venv
+   ```
+
+2. Activate the virtual environment:
+   - On Windows:
+     ```
+     venv\Scripts\activate
+     ```
+   - On macOS/Linux:
+     ```
+     source venv/bin/activate
+     ```
+
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Configure environment variables (or modify the `.env` file):
+   ```
+   # Flask configuration
+   FLASK_APP=app
+   FLASK_ENV=development
+   DEBUG=True
+   SECRET_KEY=your_secret_key
+
+   # Database configuration
+   DB_USER=postgres
+   DB_PASSWORD=root
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=human_translator
+
+   # JWT configuration
+   JWT_SECRET_KEY=your_jwt_secret_key
+   JWT_ACCESS_TOKEN_EXPIRES=86400
+   ```
+
+## Running the Server
+
+1. Start the Flask application:
+   ```
+   python run.py
+   ```
+
+   The server will start on http://localhost:5000 by default.
 
 ## API Endpoints
 
 ### Authentication
 
-- `POST /api/register` - Register a new user
-- `POST /api/login` - Login an existing user
-- `POST /api/logout` - Logout a user
-- `POST /api/reset-password-request` - Request a password reset
-- `POST /api/reset-password-confirm` - Confirm a password reset
-- `POST /api/refresh` - Refresh an access token
+- **Register**: `POST /api/auth/register`
+  - Payload: `{ "name": "User Name", "email": "user@example.com", "password": "password123", "confirm_password": "password123", "is_traveler": true, "preferred_language": "en" }`
 
-### User Management
+- **Login**: `POST /api/auth/login`
+  - Payload: `{ "email": "user@example.com", "password": "password123" }`
 
-- `GET /api/users/me` - Get the current user's profile
-- `PUT /api/users/me` - Update the current user's profile
-- `GET /api/users/me/language` - Get the current user's preferred language
+- **Reset Password Request**: `POST /api/auth/reset-password`
+  - Payload: `{ "email": "user@example.com" }`
 
-## Data Models
+- **Reset Password Confirm**: `POST /api/auth/reset-password/<token>`
+  - Payload: `{ "password": "newpassword123", "confirm_password": "newpassword123" }`
 
-The application uses the following main data models:
+- **Get User Type**: `GET /api/auth/user-type`
+  - Requires authentication
 
-- `User`: Core user data including authentication
-- `TravelerProfile`: Profile data specific to travelers
-- `TranslatorProfile`: Profile data specific to translators
-- `LanguageProficiency`: Language skills for translators
-- `PasswordResetToken`: Tokens for password reset
-- `RefreshToken`: Tokens for JWT refresh
+## Development
 
-## Security
+### Project Structure
 
-- Passwords are hashed using Werkzeug's security functions
-- JWT-based authentication with both access and refresh tokens
-- Token expiration and secure token storage 
+```
+server/
+├── app/
+│   ├── models/
+│   │   ├── database.py     # Database configuration
+│   │   ├── user.py         # User and auth models
+│   │   └── profile.py      # Profile models
+│   ├── routes/
+│   │   └── auth.py         # Authentication routes
+│   ├── utils/
+│   │   ├── validators.py   # Input validators
+│   │   └── email_service.py # Email service
+│   ├── config.py           # App configuration
+│   └── __init__.py         # App initialization
+├── .env                    # Environment variables
+├── requirements.txt        # Dependencies
+├── run.py                  # Run script
+└── tables.sql              # Database schema
+``` 

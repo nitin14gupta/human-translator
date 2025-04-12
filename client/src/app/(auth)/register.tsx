@@ -119,7 +119,7 @@ export default function Register() {
 
   // Navigate to login screen
   const goToLogin = () => {
-    router.push("/(shared)/login");
+    router.push("/(auth)/login");
   };
 
   // Navigate to terms screen

@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
-import { updateUserProfileDetails, createUserProfile } from '../../services/api';
+import { createUserProfile } from '../../services/api';
 
 // Indian languages list
 const indianLanguages = [
@@ -105,7 +105,7 @@ export default function TravelerInfo() {
     }
   };
   
-  // Complete profile setup
+  // Complete profile setup - simplified with mock functionality
   const completeProfile = async () => {
     // Validate inputs
     if (!name.trim()) {
@@ -129,16 +129,16 @@ export default function TravelerInfo() {
         // If we had an endpoint for profile image, we would include it here
       };
       
-      // Create or update profile
-      if (user) {
-        await createUserProfile(profileData);
-        Alert.alert('Success', 'Your traveler profile has been created!');
-        
-        // Navigate to main app
-        router.replace('/(tabs)/traveler');
-      } else {
-        Alert.alert('Error', 'You must be logged in to create a profile');
-      }
+      // Log profile data
+      console.log('Creating traveler profile with data:', profileData);
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate success
+      Alert.alert('Success', 'Your traveler profile has been created!', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)/traveler') }
+      ]);
     } catch (error) {
       console.error('Error creating profile:', error);
       Alert.alert('Error', 'Failed to create profile. Please try again.');

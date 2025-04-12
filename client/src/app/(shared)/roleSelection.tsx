@@ -23,15 +23,9 @@ export default function RoleSelection() {
     try {
       // Navigate to authentication with role parameter
       if (role === "traveler") {
-        router.push({
-          pathname: "/(shared)/register",
-          params: { isNeedTranslator: "true" }
-        });
+        router.push("/register?isNeedTranslator=true");
       } else {
-        router.push({
-          pathname: "/(shared)/register",
-          params: { isNeedTranslator: "false" }
-        });
+        router.push("/register?isNeedTranslator=false");
       }
     } catch (error) {
       console.error("Error saving role:", error);
@@ -42,7 +36,7 @@ export default function RoleSelection() {
 
   // Navigate to language selection
   const openLanguageSelector = () => {
-    router.push("/(shared)/languageSelection");
+    router.push("/languageSelection");
   };
 
   // If loading, show a loading indicator
@@ -63,7 +57,7 @@ export default function RoleSelection() {
           <View className="mb-8">
             <View className="w-20 h-20 rounded-full bg-primary items-center justify-center">
               <Text className="text-white font-heading font-bold text-xl">
-                XA
+                HT
               </Text>
             </View>
           </View>

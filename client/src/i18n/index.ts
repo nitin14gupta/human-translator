@@ -22,10 +22,10 @@ i18n
       zh: { translation: zh },
       ja: { translation: ja },
     },
-    lng: 'en', // Default language
+    lng: 'en', 
     fallbackLng: 'en',
     interpolation: {
-      escapeValue: false, // React already escapes values
+      escapeValue: false,
     },
   });
 

@@ -1,30 +1,36 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import '../i18n'; // Import i18n configuration
-import { loadSavedLanguage } from '../services/languageService';
+import '../i18n';
+import { loadSavedLanguage } from '../i18n';
 import '@/global.css';
-import FallbackHandler from '@/src/components/FallbackHandler';
 import { AuthProvider } from '../context/AuthContext';
 
-export default function Layout() {
-  // Load saved language when app starts
+export default function RootLayout() {
+  // Load saved language on app start
   useEffect(() => {
-    const initLanguage = async () => {
-      await loadSavedLanguage();
+    const initializeApp = async () => {
+      try {
+        // Load saved language from storage
+        await loadSavedLanguage();
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
     };
     
-    initLanguage();
+    initializeApp();
   }, []);
 
   return (
     <AuthProvider>
-    <FallbackHandler>
-      <Stack initialRouteName="index">
+      <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(shared)" options={{ headerShown: false }} />
+        <Stack.Screen name="languageSelection" options={{ headerShown: false }} />
+        <Stack.Screen name="roleSelection" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="forgotPassword" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-    </FallbackHandler>
     </AuthProvider>
   );
 }
