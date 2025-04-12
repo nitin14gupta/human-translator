@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Text,
@@ -7,16 +7,42 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
-  Image
+  Image,
+  Animated,
+  Platform,
+  StatusBar,
+  RefreshControl
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { useAuth } from "../../../context/AuthContext";
+
+// Define proper types for our data
+interface ChatData {
+  id: string;
+  travelerName: string;
+  lastMessage: string;
+  unreadCount: number;
+  time: string;
+  avatar: string | null;
+  isActive: boolean;
+  languages: string[];
+  lastSeen?: string;
+}
 
 export default function TranslatorChatScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [scrollY] = useState(new Animated.Value(0));
   
   // Mock data for chats
-  const [chats, setChats] = useState([
+  const [chats, setChats] = useState<ChatData[]>([
     {
       id: "1",
       travelerName: "John Smith",
@@ -25,7 +51,8 @@ export default function TranslatorChatScreen() {
       time: "10:45 AM",
       avatar: null,
       isActive: true,
-      languages: ["English", "French"]
+      languages: ["English", "French"],
+      lastSeen: "Just now"
     },
     {
       id: "2",
@@ -35,7 +62,8 @@ export default function TranslatorChatScreen() {
       time: "Yesterday",
       avatar: null,
       isActive: false,
-      languages: ["Spanish", "French"]
+      languages: ["Spanish", "French"],
+      lastSeen: "2 hours ago"
     },
     {
       id: "3",
@@ -45,7 +73,8 @@ export default function TranslatorChatScreen() {
       time: "Yesterday",
       avatar: null,
       isActive: true,
-      languages: ["Chinese", "French", "English"]
+      languages: ["Chinese", "French", "English"],
+      lastSeen: "5 minutes ago"
     },
     {
       id: "4",
@@ -55,88 +84,180 @@ export default function TranslatorChatScreen() {
       time: "Monday",
       avatar: null,
       isActive: false,
-      languages: ["English", "French"]
+      languages: ["English", "French"],
+      lastSeen: "3 days ago"
+    },
+    {
+      id: "5",
+      travelerName: "Akira Tanaka",
+      lastMessage: "I'll be waiting at the hotel lobby",
+      unreadCount: 1,
+      time: "11:22 AM",
+      avatar: null,
+      isActive: true,
+      languages: ["Japanese", "English"],
+      lastSeen: "Just now"
     }
   ]);
 
-  // Filter chats based on search query
-  const filteredChats = chats.filter(chat => 
-    chat.travelerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Animation value for header
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [1, 0.9],
+    extrapolate: 'clamp',
+  });
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Simulate a network request
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  }, []);
+
+  // Filter chats based on search query and active filter
+  const filteredChats = chats.filter(chat => {
+    // Text search filter
+    const matchesSearch = 
+      searchQuery === "" ||
+      chat.travelerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Status filter
+    const matchesFilter = 
+      activeFilter === "all" ||
+      (activeFilter === "active" && chat.isActive) ||
+      (activeFilter === "unread" && chat.unreadCount > 0) ||
+      (activeFilter === "archived" && false); // No archived chats in mock data
+    
+    return matchesSearch && matchesFilter;
+  });
 
   // Handle chat item press
-  const handleChatPress = (chatId) => {
-    // Navigate to chat detail
-    console.log(`Navigate to chat ${chatId}`);
-    // In a real app, you would navigate to a chat detail screen
+  const handleChatPress = (chatId: string) => {
+    // Mark as read in a real app
+    const updatedChats = chats.map(chat => 
+      chat.id === chatId ? { ...chat, unreadCount: 0 } : chat
+    );
+    setChats(updatedChats);
+    
+    // Navigate to chat detail view
+    router.push(`/(translator)/${chatId}`);
   };
 
   // Render chat item
-  const renderChatItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.chatItem}
-      onPress={() => handleChatPress(item.id)}
+  const renderChatItem = ({ item }: { item: ChatData }) => (
+    <Animated.View 
+      style={{
+        opacity: 1,
+        transform: [{ scale: 1 }],
+      }}
     >
-      {/* Avatar */}
-      <View style={[styles.avatar, item.isActive && styles.activeAvatar]}>
-        {item.avatar ? (
-          <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
-        ) : (
-          <Text style={styles.avatarText}>{item.travelerName[0]}</Text>
-        )}
-        {item.isActive && <View style={styles.activeIndicator} />}
-      </View>
-      
-      {/* Chat details */}
-      <View style={styles.chatDetails}>
-        <View style={styles.chatHeader}>
-          <Text style={styles.travelerName}>{item.travelerName}</Text>
-          <Text style={styles.timeText}>{item.time}</Text>
+      <TouchableOpacity 
+        style={[
+          styles.chatItem,
+          item.unreadCount > 0 && styles.unreadChatItem
+        ]}
+        onPress={() => handleChatPress(item.id)}
+        activeOpacity={0.7}
+      >
+        {/* Avatar with status indicator */}
+        <View style={[styles.avatarContainer]}>
+          <View style={[styles.avatar, item.isActive && styles.activeAvatar]}>
+            {item.avatar ? (
+              <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{item.travelerName[0]}</Text>
+            )}
+          </View>
+          {item.isActive && <View style={styles.activeIndicator} />}
         </View>
         
-        <View style={styles.messageContainer}>
-          <Text 
-            style={[
-              styles.messageText, 
-              item.unreadCount > 0 && styles.unreadMessage
-            ]}
-            numberOfLines={1}
-          >
-            {item.lastMessage}
-          </Text>
-          
-          {item.unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadCount}>{item.unreadCount}</Text>
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.languagesContainer}>
-          {item.languages.map((language, index) => (
-            <Text key={index} style={styles.languageText}>
-              {language}{index < item.languages.length - 1 ? " • " : ""}
+        {/* Chat details */}
+        <View style={styles.chatDetails}>
+          <View style={styles.chatHeader}>
+            <Text style={styles.travelerName} numberOfLines={1}>
+              {item.travelerName}
             </Text>
-          ))}
+            <Text style={styles.timeText}>{item.time}</Text>
+          </View>
+          
+          <View style={styles.messageContainer}>
+            <Text 
+              style={[
+                styles.messageText, 
+                item.unreadCount > 0 && styles.unreadMessage
+              ]}
+              numberOfLines={1}
+            >
+              {item.lastMessage}
+            </Text>
+            
+            {item.unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.languagesContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <MaterialCommunityIcons name="translate" size={12} color="#888" style={{ marginRight: 3 }} />
+              {item.languages.map((language, index) => (
+                <Text key={index} style={styles.languageText}>
+                  {language}{index < item.languages.length - 1 ? " • " : ""}
+                </Text>
+              ))}
+            </View>
+            
+            {item.lastSeen && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                <Ionicons name="time-outline" size={12} color="#888" style={{ marginRight: 3 }} />
+                <Text style={styles.lastSeenText}>{item.lastSeen}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 
   // Render empty list
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubbles-outline" size={60} color="#CCC" />
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="chatbubbles-outline" size={60} color="#0066CC" />
+      </View>
       <Text style={styles.emptyTitle}>No Conversations Yet</Text>
       <Text style={styles.emptyDescription}>
-        Your conversations with travelers will appear here.
+        Your conversations with travelers will appear here. Send a message to get started.
       </Text>
+      
+      <TouchableOpacity style={styles.emptyButton}>
+        <Text style={styles.emptyButtonText}>Find Travelers</Text>
+      </TouchableOpacity>
     </View>
   );
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Animated Header */}
+      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0.98)', 'rgba(255,255,255,0.9)']}
+          style={styles.headerGradient}
+        >
+          <Text style={styles.headerTitle}>Messages</Text>
+          <Text style={styles.headerSubtitle}>
+            {filteredChats.length > 0 
+              ? `${filteredChats.length} conversations` 
+              : "No conversations yet"}
+          </Text>
+        </LinearGradient>
+      </Animated.View>
+      
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
@@ -146,6 +267,7 @@ export default function TranslatorChatScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
+          returnKeyType="search"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity 
@@ -159,60 +281,88 @@ export default function TranslatorChatScreen() {
       
       {/* Chat Filters */}
       <View style={styles.filtersContainer}>
-        <TouchableOpacity style={[styles.filterButton, styles.activeFilter]}>
-          <Text style={styles.activeFilterText}>All</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterText}>Active</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterText}>Unread</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterText}>Archived</Text>
-        </TouchableOpacity>
+        {["all", "active", "unread", "archived"].map((filter) => (
+          <TouchableOpacity 
+            key={filter}
+            style={[
+              styles.filterButton, 
+              activeFilter === filter && styles.activeFilter
+            ]}
+            onPress={() => setActiveFilter(filter)}
+          >
+            <Text 
+              style={[
+                styles.filterText,
+                activeFilter === filter && styles.activeFilterText
+              ]}
+            >
+              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
       
       {/* Chat List */}
-      <FlatList
+      <Animated.FlatList
         data={filteredChats}
         renderItem={renderChatItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={renderEmptyList}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor="#0066CC"
+            colors={["#0066CC"]}
+          />
+        }
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        showsVerticalScrollIndicator={false}
       />
       
       {/* Quick Actions */}
       <View style={styles.quickActionsContainer}>
-        <View style={styles.quickActionsHeader}>
-          <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-        </View>
-        
-        <View style={styles.quickActionsButtons}>
-          <TouchableOpacity style={styles.quickActionButton}>
-            <View style={styles.quickActionIcon}>
-              <Ionicons name="mail" size={20} color="#007BFF" />
+        <BlurView intensity={80} tint="light" style={styles.blurView}>
+          <View style={styles.quickActionsContent}>
+            <View style={styles.quickActionsHeader}>
+              <Text style={styles.quickActionsTitle}>Quick Actions</Text>
             </View>
-            <Text style={styles.quickActionText}>Message Template</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.quickActionButton}>
-            <View style={styles.quickActionIcon}>
-              <Ionicons name="alert-circle" size={20} color="#007BFF" />
+            
+            <View style={styles.quickActionsButtons}>
+              <TouchableOpacity style={styles.quickActionButton}>
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="mail" size={20} color="#0066CC" />
+                </View>
+                <Text style={styles.quickActionText}>Templates</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickActionButton}>
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="alert-circle" size={20} color="#0066CC" />
+                </View>
+                <Text style={styles.quickActionText}>Support</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickActionButton}>
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="filter" size={20} color="#0066CC" />
+                </View>
+                <Text style={styles.quickActionText}>Filter</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickActionButton}>
+                <View style={styles.quickActionIcon}>
+                  <Ionicons name="person-add" size={20} color="#0066CC" />
+                </View>
+                <Text style={styles.quickActionText}>New Chat</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.quickActionText}>Report Issue</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.quickActionButton}>
-            <View style={styles.quickActionIcon}>
-              <Ionicons name="archive" size={20} color="#007BFF" />
-            </View>
-            <Text style={styles.quickActionText}>Archive All</Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        </BlurView>
       </View>
     </View>
   );
@@ -223,6 +373,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingBottom: 10,
+    backgroundColor: 'white',
+  },
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#333",
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -231,11 +400,11 @@ const styles = StyleSheet.create({
     marginTop: 15,
     marginBottom: 10,
     paddingHorizontal: 15,
-    borderRadius: 10,
+    borderRadius: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowRadius: 5,
     elevation: 2,
   },
   searchIcon: {
@@ -256,18 +425,19 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
     marginRight: 8,
     borderRadius: 20,
     backgroundColor: "#f1f3f5",
   },
   activeFilter: {
-    backgroundColor: "#007BFF",
+    backgroundColor: "#0066CC",
   },
   filterText: {
     color: "#555",
     fontSize: 14,
+    fontWeight: "500",
   },
   activeFilterText: {
     color: "white",
@@ -277,50 +447,64 @@ const styles = StyleSheet.create({
   listContainer: {
     flexGrow: 1,
     paddingHorizontal: 15,
+    paddingBottom: 50,
   },
   chatItem: {
     flexDirection: "row",
     padding: 15,
     backgroundColor: "white",
-    borderRadius: 12,
-    marginBottom: 10,
+    borderRadius: 16,
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 2,
+  },
+  unreadChatItem: {
+    backgroundColor: "#f0f7ff",
+    borderLeftWidth: 4,
+    borderLeftColor: "#0066CC",
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 15,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: "#e6f3ff",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   activeAvatar: {
     borderWidth: 2,
-    borderColor: "#007BFF",
+    borderColor: "#0066CC",
   },
   avatarImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
-    color: "#007BFF",
+    color: "#0066CC",
   },
   activeIndicator: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#28a745",
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#4CAF50",
     borderWidth: 2,
     borderColor: "white",
   },
@@ -331,12 +515,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   travelerName: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
+    flex: 1,
+    marginRight: 8,
   },
   timeText: {
     fontSize: 12,
@@ -346,7 +532,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   messageText: {
     fontSize: 14,
@@ -354,87 +540,126 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   unreadMessage: {
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#333",
   },
   unreadBadge: {
-    backgroundColor: "#007BFF",
-    width: 20,
+    backgroundColor: "#0066CC",
+    minWidth: 20,
     height: 20,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 5,
     marginLeft: 10,
   },
   unreadCount: {
     color: "white",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
   },
   languagesContainer: {
     flexDirection: "row",
+    alignItems: 'center',
   },
   languageText: {
     fontSize: 12,
     color: "#888",
   },
+  lastSeenText: {
+    fontSize: 12,
+    color: "#888",
+  },
   emptyContainer: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 30,
     marginTop: 50,
   },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#f0f7ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#333",
-    marginTop: 20,
     marginBottom: 10,
   },
   emptyDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#777",
     textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  emptyButton: {
+    backgroundColor: "#0066CC",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+  },
+  emptyButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 15,
   },
   quickActionsContainer: {
-    backgroundColor: "white",
-    marginTop: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  blurView: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    borderTopWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  quickActionsContent: {
     paddingVertical: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
   },
   quickActionsHeader: {
-    paddingHorizontal: 15,
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    marginBottom: 15,
   },
   quickActionsTitle: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#333",
   },
   quickActionsButtons: {
     flexDirection: "row",
     justifyContent: "space-around",
+    paddingHorizontal: 10,
   },
   quickActionButton: {
     alignItems: "center",
     flex: 1,
   },
   quickActionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "#f0f7ff",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 5,
+    marginBottom: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   quickActionText: {
     fontSize: 12,
     color: "#555",
+    fontWeight: "500",
   },
 }); 

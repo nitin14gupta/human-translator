@@ -8,9 +8,63 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Dimensions,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LineChart } from "react-native-chart-kit";
+import { BlurView } from "expo-blur";
+import { StatusBar } from "expo-status-bar";
+
+const screenWidth = Dimensions.get("window").width;
+
+interface Transaction {
+  id: string;
+  travelerName: string;
+  type: "session" | "payout";
+  amount: number;
+  date: string;
+  time: string;
+  status: "completed" | "processed" | "pending";
+  location?: string;
+  rating?: number;
+  duration?: string;
+  payoutMethod?: string;
+  reference?: string;
+}
+
+interface Payout {
+  id: string;
+  amount: number;
+  date: string;
+  method: string;
+  status: "processed" | "pending";
+  reference: string;
+}
+
+interface ChartData {
+  earnings: {
+    labels: string[];
+    data: number[];
+  };
+  sessions: {
+    labels: string[];
+    data: number[];
+  };
+}
+
+interface EarningsData {
+  currentBalance: number;
+  currency: string;
+  weeklyEarnings: number;
+  monthlyEarnings: number;
+  yearlyEarnings: number;
+  pendingPayouts: number;
+  nextPayoutDate: string;
+  averageRating: number;
+  totalSessions: number;
+  chartData: ChartData;
+}
 
 export default function TranslatorEarningsScreen() {
   const { t } = useTranslation();
@@ -18,9 +72,10 @@ export default function TranslatorEarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("transactions"); // "transactions" or "payouts"
   const [timeRange, setTimeRange] = useState("week"); // "week", "month", "year", "all"
+  const [showChart, setShowChart] = useState("earnings"); // "earnings" or "sessions"
 
   // Mock data for earnings
-  const [earnings, setEarnings] = useState({
+  const [earnings, setEarnings] = useState<EarningsData>({
     currentBalance: 450,
     currency: "EUR",
     weeklyEarnings: 180,
@@ -29,11 +84,21 @@ export default function TranslatorEarningsScreen() {
     pendingPayouts: 450,
     nextPayoutDate: "Friday, June 16",
     averageRating: 4.8,
-    totalSessions: 48
+    totalSessions: 48,
+    chartData: {
+      earnings: {
+        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        data: [65, 85, 110, 75, 95, 120, 80],
+      },
+      sessions: {
+        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        data: [2, 3, 4, 2, 3, 4, 2],
+      },
+    },
   });
 
   // Mock data for transactions
-  const [transactions, setTransactions] = useState([
+  const [transactions, setTransactions] = useState<Transaction[]>([
     {
       id: "tx1",
       travelerName: "John Smith",
@@ -42,7 +107,9 @@ export default function TranslatorEarningsScreen() {
       date: "2023-06-12",
       time: "11:30 AM - 1:30 PM",
       status: "completed",
-      location: "Musée du Louvre"
+      location: "Musée du Louvre",
+      rating: 5,
+      duration: "2 hours",
     },
     {
       id: "tx2",
@@ -52,7 +119,9 @@ export default function TranslatorEarningsScreen() {
       date: "2023-06-10",
       time: "2:00 PM - 3:30 PM",
       status: "completed",
-      location: "Champs-Élysées"
+      location: "Champs-Élysées",
+      rating: 4.5,
+      duration: "1.5 hours",
     },
     {
       id: "tx3",
@@ -62,7 +131,9 @@ export default function TranslatorEarningsScreen() {
       date: "2023-06-08",
       time: "10:00 AM - 11:00 AM",
       status: "completed",
-      location: "Eiffel Tower"
+      location: "Eiffel Tower",
+      rating: 5,
+      duration: "1 hour",
     },
     {
       id: "tx4",
@@ -72,29 +143,20 @@ export default function TranslatorEarningsScreen() {
       date: "2023-06-02",
       time: "",
       status: "processed",
-      payoutMethod: "Bank Transfer"
+      payoutMethod: "Bank Transfer",
+      reference: "PAY-2023060201",
     },
-    {
-      id: "tx5",
-      travelerName: "Sarah Johnson",
-      type: "session",
-      amount: 110,
-      date: "2023-05-28",
-      time: "9:30 AM - 12:00 PM",
-      status: "completed",
-      location: "Notre-Dame Cathedral"
-    }
   ]);
 
   // Mock data for payouts
-  const [payouts, setPayouts] = useState([
+  const [payouts, setPayouts] = useState<Payout[]>([
     {
       id: "pay1",
       amount: 380,
       date: "2023-06-02",
       method: "Bank Transfer",
       status: "processed",
-      reference: "PAY-2023060201"
+      reference: "PAY-2023060201",
     },
     {
       id: "pay2",
@@ -102,7 +164,7 @@ export default function TranslatorEarningsScreen() {
       date: "2023-05-26",
       method: "Bank Transfer",
       status: "processed",
-      reference: "PAY-2023052601"
+      reference: "PAY-2023052601",
     },
     {
       id: "pay3",
@@ -110,14 +172,12 @@ export default function TranslatorEarningsScreen() {
       date: "2023-05-19",
       method: "Bank Transfer",
       status: "processed",
-      reference: "PAY-2023051901"
-    }
+      reference: "PAY-2023051901",
+    },
   ]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    
-    // Simulate fetching data
     setTimeout(() => {
       setRefreshing(false);
     }, 1500);
@@ -148,322 +208,281 @@ export default function TranslatorEarningsScreen() {
     });
   };
 
+  // Chart configuration
+  const chartConfig = {
+    backgroundGradientFrom: "#ffffff",
+    backgroundGradientTo: "#ffffff",
+    color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
+    strokeWidth: 2,
+    decimalPlaces: 0,
+    style: {
+      borderRadius: 16,
+    },
+  };
+
   // Render a transaction item
-  const renderTransactionItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.transactionItem}>
-      {/* Icon based on transaction type */}
-      <View style={[
-        styles.transactionIcon, 
-        item.type === "payout" ? styles.payoutIcon : styles.sessionIcon
-      ]}>
-        <Ionicons 
-          name={item.type === "payout" ? "arrow-down" : "cash-outline"} 
-          size={20} 
-          color={item.type === "payout" ? "#6c757d" : "#007BFF"} 
-        />
-      </View>
-      
-      {/* Transaction details */}
-      <View style={styles.transactionDetails}>
-        <View style={styles.transactionHeader}>
-          <Text style={styles.transactionTitle}>
+  const renderTransactionItem = ({ item }: { item: Transaction }) => (
+    <TouchableOpacity className="bg-white rounded-xl p-4 mb-3 shadow-sm">
+      <View className="flex-row items-center">
+        <View className={`w-10 h-10 rounded-full justify-center items-center ${
+          item.type === "payout" ? "bg-neutral-100" : "bg-blue-50"
+        }`}>
+          <Ionicons 
+            name={item.type === "payout" ? "arrow-down" : "cash-outline"} 
+            size={20} 
+            color={item.type === "payout" ? "#6c757d" : "#007BFF"} 
+          />
+        </View>
+        
+        <View className="flex-1 ml-3">
+          <Text className="text-base font-medium text-neutral-800">
             {item.type === "session" 
               ? `Session with ${item.travelerName}` 
               : "Payout to Bank Account"}
           </Text>
-          <Text style={[
-            styles.transactionAmount,
-            item.type === "payout" ? styles.payoutAmount : styles.incomeAmount
-          ]}>
-            {item.type === "payout" ? "-" : "+"}€{Math.abs(item.amount)}
-          </Text>
-        </View>
-        
-        <View style={styles.transactionMeta}>
-          <Text style={styles.transactionDate}>
-            {item.date}{item.time ? `, ${item.time}` : ""}
-          </Text>
           
-          <View style={styles.transactionStatus}>
-            <View style={[
-              styles.statusDot,
-              item.status === "completed" || item.status === "processed" 
-                ? styles.completedDot 
-                : styles.pendingDot
-            ]} />
-            <Text style={styles.statusText}>
-              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+          <View className="flex-row items-center mt-1">
+            <Text className="text-sm text-neutral-600">
+              {item.date}{item.time ? `, ${item.time}` : ""}
             </Text>
+            <View className="flex-row items-center ml-2">
+              <View className={`w-2 h-2 rounded-full ${
+                item.status === "completed" || item.status === "processed"
+                  ? "bg-green-500"
+                  : "bg-yellow-500"
+              }`} />
+              <Text className="text-xs text-neutral-500 ml-1">
+                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+              </Text>
+            </View>
           </View>
+          
+          {item.location && (
+            <View className="flex-row items-center mt-1">
+              <Ionicons name="location-outline" size={14} color="#6c757d" />
+              <Text className="text-sm text-neutral-600 ml-1">{item.location}</Text>
+              {item.duration && (
+                <>
+                  <Text className="text-neutral-400 mx-1">•</Text>
+                  <Text className="text-sm text-neutral-600">{item.duration}</Text>
+                </>
+              )}
+            </View>
+          )}
+          
+          {item.rating && (
+            <View className="flex-row items-center mt-1">
+              <Ionicons name="star" size={14} color="#FFD700" />
+              <Text className="text-sm text-neutral-600 ml-1">{item.rating}</Text>
+            </View>
+          )}
         </View>
         
-        {item.location && (
-          <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.locationText}>{item.location}</Text>
-          </View>
-        )}
-        
-        {item.payoutMethod && (
-          <View style={styles.locationContainer}>
-            <Ionicons name="card-outline" size={14} color="#666" />
-            <Text style={styles.locationText}>{item.payoutMethod}</Text>
-          </View>
-        )}
+        <Text className={`text-lg font-bold ${
+          item.type === "payout" ? "text-red-500" : "text-green-500"
+        }`}>
+          {item.type === "payout" ? "-" : "+"}€{Math.abs(item.amount)}
+        </Text>
       </View>
     </TouchableOpacity>
   );
 
   // Render a payout item
-  const renderPayoutItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.payoutItem}>
-      <View style={styles.payoutIconContainer}>
-        <Ionicons name="card-outline" size={24} color="#6c757d" />
-      </View>
-      
-      <View style={styles.payoutDetails}>
-        <Text style={styles.payoutTitle}>Payout to Bank Account</Text>
-        <Text style={styles.payoutReference}>{item.reference}</Text>
-        
-        <View style={styles.payoutMeta}>
-          <Text style={styles.payoutDate}>{item.date}</Text>
-          <View style={styles.payoutStatusContainer}>
-            <View style={[
-              styles.statusDot,
-              item.status === "processed" ? styles.completedDot : styles.pendingDot
-            ]} />
-            <Text style={styles.statusText}>
-              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-            </Text>
-          </View>
+  const renderPayoutItem = ({ item }: { item: Payout }) => (
+    <TouchableOpacity className="bg-white rounded-xl p-4 mb-3 shadow-sm">
+      <View className="flex-row items-center">
+        <View className="w-10 h-10 rounded-full bg-neutral-100 justify-center items-center">
+          <Ionicons name="card-outline" size={20} color="#6c757d" />
         </View>
+        
+        <View className="flex-1 ml-3">
+          <Text className="text-base font-medium text-neutral-800">
+            Payout via {item.method}
+          </Text>
+          
+          <View className="flex-row items-center mt-1">
+            <Text className="text-sm text-neutral-600">{item.date}</Text>
+            <View className="flex-row items-center ml-2">
+              <View className={`w-2 h-2 rounded-full ${
+                item.status === "processed" ? "bg-green-500" : "bg-yellow-500"
+              }`} />
+              <Text className="text-xs text-neutral-500 ml-1">
+                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+              </Text>
+            </View>
+          </View>
+          
+          <Text className="text-xs text-neutral-500 mt-1">
+            Ref: {item.reference}
+          </Text>
+        </View>
+        
+        <Text className="text-lg font-bold text-neutral-800">
+          €{item.amount}
+        </Text>
       </View>
-      
-      <Text style={styles.payoutAmount}>€{item.amount}</Text>
     </TouchableOpacity>
   );
 
-  // Render empty transaction list
-  const renderEmptyTransactions = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="cash-outline" size={50} color="#CCC" />
-      <Text style={styles.emptyTitle}>No Transactions</Text>
-      <Text style={styles.emptyDescription}>
-        Your earning transactions will appear here.
-      </Text>
-    </View>
-  );
-
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Earnings Summary Card */}
-      <View style={styles.summaryCard}>
-        <View style={styles.balanceSection}>
-          <Text style={styles.balanceLabel}>{t("earnings.currentBalance")}</Text>
-          <Text style={styles.balanceAmount}>€{earnings.currentBalance}</Text>
-          <Text style={styles.balanceNote}>{t("earnings.processingTime")}</Text>
-        </View>
+    <View className="flex-1 bg-neutral-gray-100">
+      <StatusBar style="light" />
+      
+      {/* Header */}
+      <View className="bg-primary pt-12 pb-6 px-4">
+        <Text className="text-white text-xl font-bold mb-1">
+          {t("earnings.title")}
+        </Text>
+        <Text className="text-white text-opacity-80">
+          {t("earnings.subtitle")}
+        </Text>
         
-        <View style={styles.nextPayoutSection}>
-          <View style={styles.payoutDateContainer}>
-            <Ionicons name="calendar-outline" size={18} color="#666" />
-            <Text style={styles.payoutDateText}>
-              Next payout: {earnings.nextPayoutDate}
+        {/* Current Balance Card */}
+        <View className="bg-white rounded-xl mt-4 p-4">
+          <Text className="text-sm text-neutral-600">Current Balance</Text>
+          <Text className="text-3xl font-bold text-neutral-800 mt-1">
+            €{earnings.currentBalance}
+          </Text>
+          <View className="flex-row items-center mt-2">
+            <Text className="text-sm text-neutral-600">
+              Next payout on {earnings.nextPayoutDate}
             </Text>
           </View>
+        </View>
+      </View>
+
+      {/* Quick Stats */}
+      <ScrollView
+        className="flex-1"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View className="flex-row justify-between px-4 py-4">
+          <View className="bg-white rounded-xl p-4 flex-1 mr-2">
+            <Text className="text-sm text-neutral-600">This Week</Text>
+            <Text className="text-xl font-bold text-neutral-800 mt-1">
+              €{earnings.weeklyEarnings}
+            </Text>
+          </View>
+          <View className="bg-white rounded-xl p-4 flex-1 ml-2">
+            <Text className="text-sm text-neutral-600">This Month</Text>
+            <Text className="text-xl font-bold text-neutral-800 mt-1">
+              €{earnings.monthlyEarnings}
+            </Text>
+          </View>
+        </View>
+
+        {/* Chart Section */}
+        <View className="bg-white mx-4 rounded-xl p-4 mb-4">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-neutral-800">
+              {showChart === "earnings" ? "Earnings" : "Sessions"} Overview
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowChart(
+                showChart === "earnings" ? "sessions" : "earnings"
+              )}
+              className="bg-blue-50 px-3 py-1 rounded-full"
+            >
+              <Text className="text-primary text-sm">
+                Show {showChart === "earnings" ? "Sessions" : "Earnings"}
+              </Text>
+            </TouchableOpacity>
+          </View>
           
-          <TouchableOpacity style={styles.withdrawButton}>
-            <Text style={styles.withdrawButtonText}>Withdraw Manually</Text>
+          <LineChart
+            data={{
+              labels: earnings.chartData[showChart as keyof ChartData].labels,
+              datasets: [{
+                data: earnings.chartData[showChart as keyof ChartData].data
+              }]
+            }}
+            width={screenWidth - 48}
+            height={220}
+            chartConfig={chartConfig}
+            bezier
+            style={{
+              marginVertical: 8,
+              borderRadius: 16
+            }}
+          />
+        </View>
+
+        {/* Tabs */}
+        <View className="flex-row bg-white mx-4 rounded-xl mb-4">
+          <TouchableOpacity
+            className={`flex-1 py-3 ${
+              activeTab === "transactions" ? "border-b-2 border-primary" : ""
+            }`}
+            onPress={() => setActiveTab("transactions")}
+          >
+            <Text className={`text-center font-medium ${
+              activeTab === "transactions" ? "text-primary" : "text-neutral-600"
+            }`}>
+              Transactions
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            className={`flex-1 py-3 ${
+              activeTab === "payouts" ? "border-b-2 border-primary" : ""
+            }`}
+            onPress={() => setActiveTab("payouts")}
+          >
+            <Text className={`text-center font-medium ${
+              activeTab === "payouts" ? "text-primary" : "text-neutral-600"
+            }`}>
+              Payouts
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
-      
-      {/* Stats Quick View */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statsCard}>
-          <Text style={styles.statsValue}>€{earnings.weeklyEarnings}</Text>
-          <Text style={styles.statsLabel}>This Week</Text>
-        </View>
-        
-        <View style={styles.statsCard}>
-          <Text style={styles.statsValue}>€{earnings.monthlyEarnings}</Text>
-          <Text style={styles.statsLabel}>This Month</Text>
-        </View>
-        
-        <View style={styles.statsCard}>
-          <Text style={styles.statsValue}>{earnings.totalSessions}</Text>
-          <Text style={styles.statsLabel}>Sessions</Text>
-        </View>
-      </View>
-      
-      {/* Tabs for Transactions and Payouts */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === "transactions" && styles.activeTab]}
-          onPress={() => setActiveTab("transactions")}
+
+        {/* Time Range Filter */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="px-4 mb-4"
         >
-          <Text style={[
-            styles.tabText, 
-            activeTab === "transactions" && styles.activeTabText
-          ]}>
-            Transactions
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === "payouts" && styles.activeTab]}
-          onPress={() => setActiveTab("payouts")}
-        >
-          <Text style={[
-            styles.tabText, 
-            activeTab === "payouts" && styles.activeTabText
-          ]}>
-            Payouts
-          </Text>
-        </TouchableOpacity>
-      </View>
-      
-      {/* Time Range Filter (for Transactions) */}
-      {activeTab === "transactions" && (
-        <View style={styles.timeRangeContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity 
-              style={[styles.timeButton, timeRange === "week" && styles.activeTimeButton]}
-              onPress={() => setTimeRange("week")}
+          {["week", "month", "year", "all"].map((range) => (
+            <TouchableOpacity
+              key={range}
+              className={`px-4 py-2 rounded-full mr-2 ${
+                timeRange === range
+                  ? "bg-primary"
+                  : "bg-white"
+              }`}
+              onPress={() => setTimeRange(range)}
             >
-              <Text style={[
-                styles.timeButtonText, 
-                timeRange === "week" && styles.activeTimeButtonText
-              ]}>
-                This Week
+              <Text className={
+                timeRange === range
+                  ? "text-white font-medium"
+                  : "text-neutral-600"
+              }>
+                {range.charAt(0).toUpperCase() + range.slice(1)}
               </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.timeButton, timeRange === "month" && styles.activeTimeButton]}
-              onPress={() => setTimeRange("month")}
-            >
-              <Text style={[
-                styles.timeButtonText, 
-                timeRange === "month" && styles.activeTimeButtonText
-              ]}>
-                This Month
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.timeButton, timeRange === "year" && styles.activeTimeButton]}
-              onPress={() => setTimeRange("year")}
-            >
-              <Text style={[
-                styles.timeButtonText, 
-                timeRange === "year" && styles.activeTimeButtonText
-              ]}>
-                This Year
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.timeButton, timeRange === "all" && styles.activeTimeButton]}
-              onPress={() => setTimeRange("all")}
-            >
-              <Text style={[
-                styles.timeButtonText, 
-                timeRange === "all" && styles.activeTimeButtonText
-              ]}>
-                All Time
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      )}
-      
-      {/* Transactions List */}
-      {activeTab === "transactions" && (
-        <View style={styles.transactionsContainer}>
-          <Text style={styles.sectionTitle}>
-            {t("earnings.history")}
-          </Text>
-          
-          {getFilteredTransactions().length > 0 ? (
-            getFilteredTransactions().map(transaction => (
-              <View key={transaction.id}>
-                {renderTransactionItem({ item: transaction })}
+          ))}
+        </ScrollView>
+
+        {/* Transactions/Payouts List */}
+        <View className="px-4 pb-6">
+          {activeTab === "transactions" ? (
+            getFilteredTransactions().map((item) => (
+              <View key={item.id}>
+                {renderTransactionItem({ item })}
               </View>
             ))
           ) : (
-            renderEmptyTransactions()
-          )}
-          
-          {transactions.length > 5 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>
-                {t("earnings.viewAll")}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color="#007BFF" />
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-      
-      {/* Payouts List */}
-      {activeTab === "payouts" && (
-        <View style={styles.transactionsContainer}>
-          <Text style={styles.sectionTitle}>
-            Payout History
-          </Text>
-          
-          {payouts.length > 0 ? (
-            payouts.map(payout => (
-              <View key={payout.id}>
-                {renderPayoutItem({ item: payout })}
+            payouts.map((item) => (
+              <View key={item.id}>
+                {renderPayoutItem({ item })}
               </View>
             ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="card-outline" size={50} color="#CCC" />
-              <Text style={styles.emptyTitle}>No Payouts</Text>
-              <Text style={styles.emptyDescription}>
-                Your payout history will appear here.
-              </Text>
-            </View>
           )}
         </View>
-      )}
-      
-      {/* Payment Methods Section */}
-      <View style={styles.paymentMethodsContainer}>
-        <Text style={styles.sectionTitle}>Payment Methods</Text>
-        
-        <TouchableOpacity style={styles.addPaymentButton}>
-          <Ionicons name="add-circle" size={22} color="#007BFF" />
-          <Text style={styles.addPaymentText}>Add Payment Method</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.paymentMethodItem}>
-          <Ionicons name="card-outline" size={24} color="#333" />
-          <View style={styles.paymentMethodDetails}>
-            <Text style={styles.paymentMethodTitle}>Bank Account</Text>
-            <Text style={styles.paymentMethodDescription}>
-              IBAN ending in •••• 4567
-            </Text>
-          </View>
-          <Text style={styles.paymentMethodDefault}>Default</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {/* Disclaimer */}
-      <View style={styles.disclaimerContainer}>
-        <Text style={styles.disclaimerText}>
-          {t("earnings.disclaimer")}
-        </Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -760,12 +779,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-//   payoutAmount: {
-//     fontSize: 16,
-//     fontWeight: "bold",
-//     color: "#6c757d",
-//     marginLeft: 10,
-//   },
   viewAllButton: {
     flexDirection: "row",
     justifyContent: "center",

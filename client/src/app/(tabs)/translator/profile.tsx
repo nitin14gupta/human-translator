@@ -1,16 +1,53 @@
 import { useTranslation } from "react-i18next";
-import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Switch, Image } from "react-native";
+import { Text, View, ScrollView, TouchableOpacity, Switch, Image, Dimensions, Alert } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
+import { LineChart } from "react-native-chart-kit";
+import { StatusBar } from "expo-status-bar";
+import { useAuth } from "../../../context/AuthContext";
+import { useRouter } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Define type for setting item
+interface SettingItem {
+  icon: string;
+  title: string;
+  description: string;
+  action: "navigate" | "toggle";
+  value?: boolean;
+  setValue?: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+// Define type for user data
+interface UserData {
+  name: string;
+  email: string;
+  location: string;
+  languages: string[];
+  memberSince: string;
+  completed_sessions: number;
+  rating: number;
+  reviews: number;
+  biography: string;
+  performance?: {
+    earnings: number[];
+    sessions: number[];
+    months: string[];
+  };
+}
 
 export default function TranslatorProfileScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { logout } = useAuth();
   const [availableForWork, setAvailableForWork] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const screenWidth = Dimensions.get("window").width - 30;
 
-  // Mock user data
-  const user = {
+  // Mock user data with added performance metrics
+  const user: UserData = {
     name: "Sara Translator",
     email: "sara.translator@example.com",
     location: "Paris, France",
@@ -19,11 +56,16 @@ export default function TranslatorProfileScreen() {
     completed_sessions: 48,
     rating: 4.8,
     reviews: 36,
-    biography: "Professional translator with 5 years of experience in tourism and business settings. Specializing in French, English, and Spanish translations."
+    biography: "Professional translator with 5 years of experience in tourism and business settings. Specializing in French, English, and Spanish translations.",
+    performance: {
+      earnings: [500, 750, 900, 850, 1200, 1350],
+      sessions: [5, 8, 10, 9, 12, 14],
+      months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+    }
   };
 
   // Settings sections
-  const accountSettings = [
+  const accountSettings: SettingItem[] = [
     { 
       icon: "person-outline", 
       title: "Edit Profile", 
@@ -68,7 +110,7 @@ export default function TranslatorProfileScreen() {
     }
   ];
 
-  const supportSettings = [
+  const supportSettings: SettingItem[] = [
     { 
       icon: "help-circle-outline", 
       title: "Help Center", 
@@ -90,18 +132,18 @@ export default function TranslatorProfileScreen() {
   ];
 
   // Render settings item
-  const renderSettingItem = (item, index, isLast) => (
+  const renderSettingItem = (item: SettingItem, index: number, isLast: boolean) => (
     <TouchableOpacity 
       key={index} 
-      style={[styles.settingItem, isLast ? null : styles.settingItemBorder]}
+      className={`flex-row items-center p-4 ${isLast ? '' : 'border-b border-neutral-gray-200'}`}
       disabled={item.action === "toggle"}
     >
-      <View style={styles.settingIconContainer}>
-        <Ionicons name={item.icon} size={24} color="#007BFF" />
+      <View className="w-10 h-10 rounded-full bg-primary bg-opacity-10 justify-center items-center mr-4">
+        <Ionicons name={item.icon as any} size={24} color="#007BFF" />
       </View>
-      <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{item.title}</Text>
-        <Text style={styles.settingDescription}>{item.description}</Text>
+      <View className="flex-1">
+        <Text className="text-base font-medium text-neutral-gray-800">{item.title}</Text>
+        <Text className="text-sm text-neutral-gray-600">{item.description}</Text>
       </View>
       {item.action === "navigate" && (
         <Ionicons name="chevron-forward" size={20} color="#ccc" />
@@ -117,109 +159,201 @@ export default function TranslatorProfileScreen() {
     </TouchableOpacity>
   );
 
+  const chartConfig = {
+    backgroundGradientFrom: "#ffffff",
+    backgroundGradientTo: "#ffffff",
+    color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
+    strokeWidth: 2,
+    decimalPlaces: 0,
+    priceScale: 0,
+    lifeStyle: {
+      borderRadius: 16
+    }
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    Alert.alert(
+      t('profile.logoutConfirmTitle'),
+      t('profile.logoutConfirmMessage'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.logout'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoggingOut(true);
+              
+              // Try to logout from server
+              try {
+                await logout();
+              } catch (error) {
+                console.error('Server logout error:', error);
+                // Continue with local logout even if server logout fails
+              }
+
+              // Clear all local storage data
+              await AsyncStorage.multiRemove([
+                'authToken',
+                'refreshToken',
+                'user',
+                'needsProfileSetup'
+              ]);
+
+              // Force navigation to login
+              router.replace('/login');
+            } catch (error) {
+              console.error('Local logout error:', error);
+              Alert.alert(
+                t('profile.logoutErrorTitle'),
+                t('profile.logoutErrorMessage'),
+                [{ text: t('common.ok') }]
+              );
+            } finally {
+              setIsLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView className="flex-1 bg-neutral-gray-100">
+      <StatusBar style="light" />
+      
       {/* Profile Header Section */}
-      <View style={styles.header}>
-        <View style={styles.profileImageContainer}>
-          <View style={styles.profileImage}>
-            <Text style={styles.profileInitial}>{user.name[0]}</Text>
+      <View className="bg-primary pt-16 pb-8 items-center">
+        <View className="relative mb-4">
+          <View className="w-24 h-24 rounded-full bg-white justify-center items-center border-2 border-white">
+            <Text className="text-4xl font-bold text-primary">{user.name[0]}</Text>
           </View>
-          <TouchableOpacity style={styles.editImageButton}>
-            <Ionicons name="camera" size={18} color="white" />
+          <TouchableOpacity className="absolute bottom-0 right-0 bg-primary w-8 h-8 rounded-full justify-center items-center border-2 border-white">
+            <Ionicons name="camera" size={16} color="white" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.userName}>{user.name}</Text>
-        <Text style={styles.userEmail}>{user.email}</Text>
-        <Text style={styles.userLocation}>
-          <Ionicons name="location-outline" size={16} color="#666" /> {user.location}
+        <Text className="text-2xl font-bold text-white mb-1">{user.name}</Text>
+        <Text className="text-base text-white opacity-80 mb-2">{user.email}</Text>
+        <Text className="text-sm text-white opacity-80 mb-2">
+          <Ionicons name="location-outline" size={16} color="white" /> {user.location}
         </Text>
-        <View style={styles.ratingContainer}>
-          <Text style={styles.ratingText}>{user.rating}</Text>
+        <View className="flex-row items-center mb-2">
+          <Text className="text-base font-bold text-white mr-1">{user.rating}</Text>
           <Ionicons name="star" size={16} color="#FFD700" />
-          <Text style={styles.reviewCount}>({user.reviews} reviews)</Text>
+          <Text className="text-sm text-white opacity-80 ml-1">({user.reviews} reviews)</Text>
         </View>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>
+        <View className="bg-white bg-opacity-20 px-3 py-1 rounded-full">
+          <Text className="text-sm text-white font-medium">
             {availableForWork ? "Available for Work" : "Not Available"}
           </Text>
         </View>
       </View>
 
       {/* Stats Section */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{user.completed_sessions}</Text>
-          <Text style={styles.statLabel}>Completed Sessions</Text>
+      <View className="flex-row bg-white mx-4 mt-[-20] rounded-xl shadow-sm p-4 mb-6">
+        <View className="flex-1 items-center">
+          <Text className="text-lg font-bold text-neutral-gray-800">{user.completed_sessions}</Text>
+          <Text className="text-xs text-neutral-gray-600">Sessions</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{user.languages.length}</Text>
-          <Text style={styles.statLabel}>Languages</Text>
+        <View className="w-[1px] h-[80%] bg-neutral-gray-200" />
+        <View className="flex-1 items-center">
+          <Text className="text-lg font-bold text-neutral-gray-800">{user.languages.length}</Text>
+          <Text className="text-xs text-neutral-gray-600">Languages</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{user.memberSince}</Text>
-          <Text style={styles.statLabel}>Member Since</Text>
+        <View className="w-[1px] h-[80%] bg-neutral-gray-200" />
+        <View className="flex-1 items-center">
+          <Text className="text-lg font-bold text-neutral-gray-800">{user.memberSince}</Text>
+          <Text className="text-xs text-neutral-gray-600">Member Since</Text>
         </View>
       </View>
 
       {/* Biography Section */}
-      <View style={styles.bioSection}>
-        <Text style={styles.sectionTitle}>Biography</Text>
-        <Text style={styles.bioText}>{user.biography}</Text>
-        <TouchableOpacity style={styles.editBioButton}>
-          <Text style={styles.editBioText}>Edit Biography</Text>
+      <View className="bg-white mx-4 rounded-xl shadow-sm p-4 mb-6">
+        <Text className="text-lg font-medium text-neutral-gray-800 mb-2">Biography</Text>
+        <Text className="text-sm text-neutral-gray-600 leading-5 mb-2">{user.biography}</Text>
+        <TouchableOpacity className="self-end">
+          <Text className="text-sm text-primary font-medium">Edit Biography</Text>
         </TouchableOpacity>
       </View>
 
       {/* Languages Section */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Languages</Text>
-        <View style={styles.languagesContainer}>
+      <View className="mb-6">
+        <Text className="text-lg font-medium text-neutral-gray-800 mx-4 mb-2">Languages</Text>
+        <View className="bg-white mx-4 rounded-xl shadow-sm p-4">
           {user.languages.map((language, index) => (
-            <View key={index} style={styles.languageItem}>
+            <View key={index} className="flex-row items-center mb-2">
               <MaterialIcons name="translate" size={20} color="#007BFF" />
-              <Text style={styles.languageText}>{language}</Text>
+              <Text className="text-base text-neutral-gray-800 ml-3">{language}</Text>
             </View>
           ))}
-          <TouchableOpacity style={styles.addLanguageButton}>
+          <TouchableOpacity className="flex-row items-center mt-2">
             <Ionicons name="add" size={20} color="#007BFF" />
-            <Text style={styles.addLanguageText}>Add Language</Text>
+            <Text className="text-sm text-primary font-medium ml-2">Add Language</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Performance Section */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Performance</Text>
-        <TouchableOpacity style={styles.performanceCard}>
-          <View style={styles.performanceIconContainer}>
-            <Ionicons name="analytics-outline" size={24} color="#007BFF" />
-          </View>
-          <View style={styles.performanceContent}>
-            <Text style={styles.performanceTitle}>Session Stats</Text>
-            <Text style={styles.performanceDescription}>View your session performance and metrics</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#ccc" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.performanceCard}>
-          <View style={styles.performanceIconContainer}>
-            <Ionicons name="star-half-outline" size={24} color="#007BFF" />
-          </View>
-          <View style={styles.performanceContent}>
-            <Text style={styles.performanceTitle}>Client Reviews</Text>
-            <Text style={styles.performanceDescription}>See what clients are saying about your service</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#ccc" />
-        </TouchableOpacity>
+      {/* Performance Chart Section - NEW */}
+      <View className="mb-6">
+        <Text className="text-lg font-medium text-neutral-gray-800 mx-4 mb-2">Performance</Text>
+        <View className="bg-white mx-4 rounded-xl shadow-sm p-4">
+          <Text className="text-base font-medium text-neutral-gray-800 mb-2">Earnings Overview</Text>
+          <LineChart
+            data={{
+              labels: user.performance?.months || [],
+              datasets: [
+                {
+                  data: user.performance?.earnings || [],
+                  color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
+                  strokeWidth: 2
+                }
+              ]
+            }}
+            width={screenWidth - 40}
+            height={180}
+            chartConfig={chartConfig}
+            bezier
+            style={{
+              marginVertical: 8,
+              borderRadius: 16
+            }}
+          />
+          
+          <Text className="text-base font-medium text-neutral-gray-800 mt-4 mb-2">Sessions Completed</Text>
+          <LineChart
+            data={{
+              labels: user.performance?.months || [],
+              datasets: [
+                {
+                  data: user.performance?.sessions || [],
+                  color: (opacity = 1) => `rgba(40, 167, 69, ${opacity})`,
+                  strokeWidth: 2
+                }
+              ]
+            }}
+            width={screenWidth - 40}
+            height={180}
+            chartConfig={{
+              ...chartConfig,
+              color: (opacity = 1) => `rgba(40, 167, 69, ${opacity})`,
+            }}
+            bezier
+            style={{
+              marginVertical: 8,
+              borderRadius: 16
+            }}
+          />
+        </View>
       </View>
 
       {/* Account Settings */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Account Settings</Text>
-        <View style={styles.settingsContainer}>
+      <View className="mb-6">
+        <Text className="text-lg font-medium text-neutral-gray-800 mx-4 mb-2">Account Settings</Text>
+        <View className="bg-white mx-4 rounded-xl shadow-sm overflow-hidden">
           {accountSettings.map((item, index) => 
             renderSettingItem(item, index, index === accountSettings.length - 1)
           )}
@@ -227,9 +361,9 @@ export default function TranslatorProfileScreen() {
       </View>
 
       {/* Support & Help */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Support & Help</Text>
-        <View style={styles.settingsContainer}>
+      <View className="mb-6">
+        <Text className="text-lg font-medium text-neutral-gray-800 mx-4 mb-2">Support & Help</Text>
+        <View className="bg-white mx-4 rounded-xl shadow-sm overflow-hidden">
           {supportSettings.map((item, index) => 
             renderSettingItem(item, index, index === supportSettings.length - 1)
           )}
@@ -237,303 +371,19 @@ export default function TranslatorProfileScreen() {
       </View>
 
       {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutButton}>
+      <TouchableOpacity 
+        className="flex-row items-center justify-center bg-[#FFE5E5] mx-4 mb-4 mt-2 rounded-xl p-4"
+        onPress={handleLogout}
+        disabled={isLoggingOut}
+      >
         <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-        <Text style={styles.logoutText}>Log Out</Text>
+        <Text className="text-[#FF3B30] text-base font-medium ml-2">
+          {isLoggingOut ? t('profile.loggingOut') : t('profile.logout')}
+        </Text>
       </TouchableOpacity>
 
       {/* App Version */}
-      <Text style={styles.versionText}>Version 1.0.0</Text>
+      <Text className="text-center text-neutral-gray-500 text-xs mb-8">Version 1.0.0</Text>
     </ScrollView>
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
-  },
-  header: {
-    backgroundColor: "#007BFF",
-    paddingTop: 60,
-    paddingBottom: 30,
-    alignItems: "center",
-  },
-  profileImageContainer: {
-    position: "relative",
-    marginBottom: 15,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "white",
-  },
-  profileInitial: {
-    fontSize: 40,
-    fontWeight: "bold",
-    color: "#007BFF",
-  },
-  editImageButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#007BFF",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "white",
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginBottom: 8,
-  },
-  userLocation: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginBottom: 8,
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "white",
-    marginRight: 4,
-  },
-  reviewCount: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginLeft: 4,
-  },
-  statusBadge: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 15,
-  },
-  statusText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  statsContainer: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    borderRadius: 10,
-    margin: 15,
-    marginTop: -20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    padding: 15,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#666",
-    textAlign: "center",
-  },
-  statDivider: {
-    width: 1,
-    height: "80%",
-    backgroundColor: "#eee",
-  },
-  bioSection: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginHorizontal: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    padding: 15,
-  },
-  bioText: {
-    fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
-    marginBottom: 10,
-  },
-  editBioButton: {
-    alignSelf: "flex-end",
-  },
-  editBioText: {
-    color: "#007BFF",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  sectionContainer: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginHorizontal: 15,
-    marginBottom: 10,
-  },
-  languagesContainer: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginHorizontal: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    padding: 15,
-  },
-  languageItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  languageText: {
-    fontSize: 16,
-    color: "#333",
-    marginLeft: 10,
-  },
-  addLanguageButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 5,
-  },
-  addLanguageText: {
-    color: "#007BFF",
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 5,
-  },
-  performanceCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    marginHorizontal: 15,
-    marginBottom: 10,
-    borderRadius: 10,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  performanceIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f0f7ff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  performanceContent: {
-    flex: 1,
-  },
-  performanceTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 2,
-  },
-  performanceDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  settingsContainer: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginHorizontal: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    overflow: "hidden",
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-  },
-  settingItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  settingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f0f7ff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  settingContent: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 2,
-  },
-  settingDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFE5E5",
-    marginHorizontal: 15,
-    marginBottom: 10,
-    marginTop: 10,
-    borderRadius: 10,
-    padding: 15,
-  },
-  logoutText: {
-    color: "#FF3B30",
-    fontSize: 16,
-    fontWeight: "500",
-    marginLeft: 10,
-  },
-  versionText: {
-    textAlign: "center",
-    color: "#999",
-    fontSize: 12,
-    marginBottom: 30,
-  },
-}); 
+} 
