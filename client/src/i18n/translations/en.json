@@ -1,0 +1,186 @@
+{
+  "languageSelection": {
+    "title": "Choose Your Preferred Language",
+    "subtitle": "You can change this later in settings.",
+    "continueButton": "Continue in {{language}}",
+    "loading": "Loading..."
+  },
+  "roleSelection": {
+    "title": "Are You a Traveler or Translator?",
+    "subtitle": "Select your role to tailor your experience.",
+    "needTranslator": "I Need a Translator",
+    "offerTranslation": "I Offer Translation Services"
+  },
+  "authentication": {
+    "title": "Create Your Account",
+    "subtitle": "Join our translation community",
+    "phoneNumberPlaceholder": "Phone Number",
+    "privacyNotice": "We'll never share your details without permission",
+    "signUpButton": "Sign Up Securely",
+    "orContinueWith": "Or continue with",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "termsPrefix": "By signing up, you agree to our",
+    "terms": "Terms",
+    "andConnector": "and",
+    "privacyPolicy": "Privacy Policy",
+    "appName": "Human Translator",
+    "invalidNumber": "Invalid Phone Number",
+    "enterValidNumber": "Please enter a valid phone number",
+    "networkError": "Network Error",
+    "testModePrompt": "Could not connect to the server. Would you like to proceed with a test code?",
+    "useTestCode": "Use Test Code",
+    "notImplemented": "Not Implemented",
+    "googleNotImplemented": "Google Sign-In is not implemented in this demo.",
+    "appleNotImplemented": "Apple Sign-In is not implemented in this demo."
+  },
+  "login": {
+    "title": "Welcome Back",
+    "subtitle": "Log in to your account",
+    "emailPlaceholder": "Email Address",
+    "passwordPlaceholder": "Password",
+    "forgotPassword": "Forgot Password?",
+    "loginButton": "Log In",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign Up",
+    "rememberMe": "Remember Me",
+    "invalidCredentials": "Invalid email or password",
+    "accountLocked": "Your account has been locked due to multiple failed attempts",
+    "loginSuccess": "Login successful"
+  },
+  "register": {
+    "title": "Create Your Account",
+    "subtitle": "Join our translation community",
+    "namePlaceholder": "Full Name",
+    "emailPlaceholder": "Email Address",
+    "passwordPlaceholder": "Password (min. 8 characters)",
+    "confirmPasswordPlaceholder": "Confirm Password",
+    "registerButton": "Register",
+    "haveAccount": "Already have an account?",
+    "logIn": "Log In",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "weakPassword": "Password is too weak",
+    "emailInUse": "Email is already in use",
+    "registrationSuccess": "Registration successful",
+    "roleSelection": "I am a:",
+    "traveler": "Traveler",
+    "translator": "Translator",
+    "languageSelection": "Preferred Language:"
+  },
+  "forgotPassword": {
+    "title": "Forgot Password",
+    "subtitle": "Enter your email to reset your password",
+    "emailPlaceholder": "Email Address",
+    "resetButton": "Send Reset Link",
+    "backToLogin": "Back to Login",
+    "checkEmail": "Check your email",
+    "emailSent": "We've sent password reset instructions to your email",
+    "emailNotFound": "Email not found",
+    "resetSuccess": "Password reset successful",
+    "resetTitle": "Reset Your Password",
+    "newPasswordPlaceholder": "New Password",
+    "confirmPasswordPlaceholder": "Confirm New Password",
+    "confirmResetButton": "Reset Password"
+  },
+  "verification": {
+    "title": "Verify Your Identity",
+    "subtitle": "We've sent a 6-digit code to {{phoneNumber}}",
+    "resendCode": "Didn't receive the code? Resend in {{timer}}",
+    "verifyButton": "Verify",
+    "secureNotice": "Your verification is secure and encrypted",
+    "invalidCode": "Invalid Code",
+    "enterValidCode": "Please enter a valid 6-digit code",
+    "successTitle": "Success",
+    "successMessage": "Verification successful! You've been registered as a {{role}}.",
+    "testCodeResent": "Test Code Resent",
+    "useTestCode": "Remember to use the code: {{code}}",
+    "codeResent": "Code Resent",
+    "newCodeSent": "A new verification code has been sent.",
+    "testCodeReminder": "Test Code Reminder",
+    "verifyError": "Failed to verify code. Please try again.",
+    "resendError": "Failed to resend code. Please try again.",
+    "testCodeTitle": "Test Mode"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "error": "Error"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "description": "Welcome to Human Translator. By using our app, you agree to these terms, which ensure a fair and productive environment for all users. Our services are designed to connect travelers with translators in real-time, facilitate communication, and provide cultural guidance. Users must be at least 18 years old and provide accurate information. Translators must have proficiency in the languages they offer. All users must respect others and follow local laws. We protect your data according to our Privacy Policy. We reserve the right to suspend accounts that violate these terms."
+  },
+  "privacyPolicy": {
+    "title": "Privacy Policy",
+    "description": "At Human Translator, we take your privacy seriously. We collect personal information such as phone numbers and location data only to provide our translation services. Your conversations are encrypted and not stored permanently unless requested for quality purposes. We use industry-standard security measures to protect your data. We do not sell your information to third parties. You can access, modify, or delete your data at any time through the app settings. By using our services, you consent to this policy. If you have questions about your privacy, please contact our support team."
+  },
+  "home": {
+    "greeting": "Good day!",
+    "searchPlaceholder": "Search for a translator",
+    "nearbyTranslators": "Nearby Translators",
+    "quickActions": "Quick Actions",
+    "startChat": "Start Chat",
+    "favorites": "Favorites",
+    "settings": "Settings"
+  },
+  "earnings": {
+    "currentBalance": "Current Balance",
+    "processingTime": "Payments processed weekly",
+    "history": "Transaction History",
+    "disclaimer": "Earnings are paid out every Friday to your linked bank account.",
+    "viewAll": "View All"
+  },
+  "tabs": {
+    "home": "Home",
+    "chat": "Chat",
+    "profile": "Profile",
+    "earnings": "Earnings"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "zh": "Chinese",
+    "ja": "Japanese"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "message": "We're having trouble processing your request. Please try again later.",
+    "code": "Error code",
+    "whatHappened": "What might have happened?",
+    "serverIssue": "Our server might be experiencing issues",
+    "connectionIssue": "Your connection might be unstable",
+    "timeoutIssue": "The request might have timed out",
+    "retry": "Try Again",
+    "goHome": "Go to Home",
+    "supportInfo": "If the problem persists, contact our support team."
+  },
+  "noInternet": {
+    "title": "No Internet Connection",
+    "message": "Please check your internet connection and try again",
+    "tips": "Troubleshooting Tips:",
+    "checkWifi": "Check your Wi-Fi connection",
+    "checkData": "Make sure mobile data is turned on",
+    "restartDevice": "Restart your device",
+    "retry": "Retry Connection",
+    "offlineNotice": "Some features may be available offline"
+  },
+  "maintenance": {
+    "title": "Scheduled Maintenance",
+    "message": "We're currently undergoing scheduled maintenance to improve our service",
+    "scheduledTime": "Estimated completion",
+    "estimatedTime": "in about {{time}}",
+    "upgradeInfo": "We're upgrading our systems to serve you better",
+    "apologyMessage": "We apologize for any inconvenience",
+    "checkStatus": "Check Status",
+    "tryAgain": "Try Again Later"
+  },
+  "session": {
+    "expired": "Session Expired",
+    "message": "Your session has expired due to inactivity",
+    "securityMessage": "For your security, you've been logged out after a period of inactivity",
+    "loginAgain": "Please log in again to continue",
+    "loginButton": "Log In"
+  }
+}
