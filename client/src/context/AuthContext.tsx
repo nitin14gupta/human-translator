@@ -273,16 +273,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       
-      // Call logout API if refresh token exists
+      // Try to call logout API if refresh token exists, but don't block on failure
       if (refreshToken) {
-        await apiFetch('/api/logout', {
-          method: 'POST',
-          headers: await createAuthHeaders(),
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
+        try {
+          await apiFetch('/api/logout', {
+            method: 'POST',
+            headers: await createAuthHeaders(),
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+        } catch (apiError) {
+          // Log but don't throw the error - we still want to clear local data
+          console.warn('Error calling logout API:', apiError);
+        }
       }
       
-      // Clear all auth data from storage
+      // Always clear local data regardless of API call success
       await clearAuthData();
       
       // Clear additional user data
@@ -290,7 +295,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await AsyncStorage.removeItem('userName');
       await AsyncStorage.removeItem('preferredLanguage');
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error clearing local data during logout:', error);
+      // Only throw if we couldn't clear local data
       throw error;
     } finally {
       setIsLoading(false);

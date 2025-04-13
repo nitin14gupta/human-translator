@@ -5,328 +5,210 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  FlatList,
-  Image,
   RefreshControl,
+  Image,
+  Platform,
 } from "react-native";
-import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../../context/AuthContext";
+import { StatusBar } from "expo-status-bar";
 
-// Mock data for demonstration
-const nearbyTranslators = [
-  {
-    id: 1,
-    name: "Emma Chen",
-    language: "Chinese",
-    rating: 4.8,
-    distance: "0.5 km",
-    online: true,
-    hourlyRate: 25,
-    totalJobs: 145,
-    image: null,
-  },
-  {
-    id: 2,
-    name: "Miguel Lopez",
-    language: "Spanish",
-    rating: 4.9,
-    distance: "1.2 km",
-    online: true,
-    hourlyRate: 30,
-    totalJobs: 89,
-    image: null,
-  },
-  {
-    id: 3,
-    name: "Yuki Tanaka",
-    language: "Japanese",
-    rating: 4.7,
-    distance: "2.0 km",
-    online: false,
-    hourlyRate: 28,
-    totalJobs: 67,
-    image: null,
-  },
-  {
-    id: 4,
-    name: "Hans Mueller",
-    language: "German",
-    rating: 4.6,
-    distance: "2.5 km",
-    online: true,
-    hourlyRate: 22,
-    totalJobs: 124,
-    image: null,
-  },
-];
+interface Translator {
+  id: string;
+  name: string;
+  photo: string;
+  languages: string[];
+  location: string;
+  rating: number;
+  reviews: number;
+  hourlyRate: number;
+  available: boolean;
+}
 
-// List of languages for filters
-const languages = [
-  { id: "all", name: "All" },
-  { id: "en", name: "English" },
-  { id: "zh", name: "Chinese" },
-  { id: "es", name: "Spanish" },
-  { id: "ja", name: "Japanese" },
-  { id: "de", name: "German" },
-  { id: "fr", name: "French" },
-  { id: "hi", name: "Hindi" },
-];
-
-export default function TravelerHomeScreen() {
-  const { t } = useTranslation();
+export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState("all");
-  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"all" | "available" | "top">("all");
 
-  const onRefresh = React.useCallback(() => {
+  // Mock data for featured translators
+  const translators: Translator[] = [
+    {
+      id: "1",
+      name: "Sarah Martin",
+      photo: "https://placekitten.com/200/200",
+      languages: ["English", "French", "Spanish"],
+      location: "Paris, France",
+      rating: 4.9,
+      reviews: 124,
+      hourlyRate: 45,
+      available: true,
+    },
+    {
+      id: "2",
+      name: "Jean Dupont",
+      photo: "https://placekitten.com/201/201",
+      languages: ["French", "English"],
+      location: "Lyon, France",
+      rating: 4.8,
+      reviews: 89,
+      hourlyRate: 40,
+      available: true,
+    },
+    {
+      id: "3",
+      name: "Maria Garcia",
+      photo: "https://placekitten.com/202/202",
+      languages: ["Spanish", "French", "English"],
+      location: "Barcelona, Spain",
+      rating: 4.7,
+      reviews: 56,
+      hourlyRate: 35,
+      available: false,
+    },
+  ];
+
+  const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
-
-  // Filter translators based on search, language, and online status
-  const filteredTranslators = nearbyTranslators.filter((translator) => {
-    // Search query filter
-    const matchesSearch =
-      searchQuery === "" ||
-      translator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      translator.language.toLowerCase().includes(searchQuery.toLowerCase());
-
-    // Language filter
-    const matchesLanguage =
-      selectedLanguage === "all" ||
-      translator.language.toLowerCase() === selectedLanguage.toLowerCase();
-
-    // Online status filter
-    const matchesOnlineStatus = !showOnlineOnly || translator.online;
-
-    return matchesSearch && matchesLanguage && matchesOnlineStatus;
-  });
-
-  const navigateToTranslatorProfile = (id: number) => {
-    // TODO: Implement navigation to translator profile
-    console.log(`Navigate to translator profile: ${id}`);
+    // Simulate data refresh
+    setTimeout(() => setRefreshing(false), 1500);
   };
 
-  return (
-    <ScrollView
-      className="flex-1 bg-neutral-gray-100"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Welcome Header */}
-      <View className="bg-primary px-5 pt-4 pb-10 rounded-b-3xl">
-        <Text className="text-white text-lg opacity-80">
-          {t("home.greeting")}
-          {user?.name ? `, ${user.name.split(" ")[0]}!` : "!"}
-        </Text>
-        <Text className="text-white text-2xl font-bold mt-1">
-          {t("home.findTranslator")}
-        </Text>
+  const filteredTranslators = translators.filter(translator => {
+    if (activeFilter === "available" && !translator.available) return false;
+    if (activeFilter === "top" && translator.rating < 4.8) return false;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        translator.name.toLowerCase().includes(query) ||
+        translator.languages.some(lang => lang.toLowerCase().includes(query)) ||
+        translator.location.toLowerCase().includes(query)
+      );
+    }
+    
+    return true;
+  });
 
-        {/* Search Bar */}
-        <View className="flex-row items-center mt-5 bg-white rounded-full px-4 py-2">
-          <Ionicons name="search" size={20} color="#666" />
+  return (
+    <View className="flex-1 bg-gray-50">
+      <StatusBar style="dark" />
+      
+      {/* Header */}
+      <View className="bg-white pt-12 pb-4 px-4">
+        <Text className="text-2xl font-bold text-gray-900">Find a Translator</Text>
+        <Text className="text-gray-600 mt-1">Connect with local translators</Text>
+      </View>
+
+      {/* Search Bar */}
+      <View className="bg-white px-4 py-4 border-b border-gray-200">
+        <View className="flex-row items-center bg-gray-100 rounded-full px-4 py-2">
+          <Ionicons name="search" size={20} color="#6B7280" />
           <TextInput
-            className="flex-1 ml-2 text-neutral-gray-800"
-            placeholder={t("home.searchPlaceholder")}
+            className="flex-1 ml-2 text-gray-900"
+            placeholder="Search by language, location, or name"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          <TouchableOpacity
-            className="bg-neutral-gray-200 rounded-full p-2"
-            onPress={() => {}}
-          >
-            <Ionicons name="options-outline" size={20} color="#333" />
-          </TouchableOpacity>
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 
-      {/* Language Filter */}
-      <View className="mt-4 px-4">
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={languages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => setSelectedLanguage(item.id)}
-              className={`px-4 py-2 mr-2 rounded-full ${
-                selectedLanguage === item.id
-                  ? "bg-primary"
-                  : "bg-neutral-gray-200"
+      {/* Filters */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="bg-white py-2"
+      >
+        {(["all", "available", "top"] as const).map((filter) => (
+          <TouchableOpacity
+            key={filter}
+            className={`px-4 py-2 mx-2 rounded-full ${
+              activeFilter === filter
+                ? "bg-blue-600"
+                : "bg-gray-100"
+            }`}
+            onPress={() => setActiveFilter(filter)}
+          >
+            <Text
+              className={`font-medium ${
+                activeFilter === filter
+                  ? "text-white"
+                  : "text-gray-600"
               }`}
             >
-              <Text
-                className={`${
-                  selectedLanguage === item.id
-                    ? "text-white font-medium"
-                    : "text-neutral-gray-700"
-                }`}
-              >
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-
-      {/* Online Only Switch */}
-      <View className="flex-row items-center justify-end mt-2 px-4">
-        <Text className="text-neutral-gray-600 mr-2">Online Only</Text>
-        <TouchableOpacity
-          onPress={() => setShowOnlineOnly(!showOnlineOnly)}
-          className={`w-12 h-6 rounded-full ${
-            showOnlineOnly ? "bg-primary" : "bg-neutral-gray-300"
-          } justify-center`}
-        >
-          <View
-            className={`w-5 h-5 bg-white rounded-full shadow ${
-              showOnlineOnly ? "ml-6" : "ml-1"
-            }`}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Translators List */}
-      <View className="mt-4 px-4">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-lg font-bold text-neutral-gray-800">
-            {filteredTranslators.length > 0
-              ? "Available Translators"
-              : "No Translators Found"}
-          </Text>
-          <TouchableOpacity>
-            <Text className="text-primary">See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {filteredTranslators.map((translator) => (
-          <TouchableOpacity
-            key={translator.id}
-            className="translator-card mb-4"
-            onPress={() => navigateToTranslatorProfile(translator.id)}
-          >
-            <View className="flex-row">
-              {/* Avatar */}
-              {translator.image ? (
-                <Image
-                  source={{ uri: translator.image }}
-                  className="w-16 h-16 rounded-full"
-                />
-              ) : (
-                <View className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
-                  <Text className="text-white text-xl font-bold">
-                    {translator.name.charAt(0)}
-                  </Text>
-                </View>
-              )}
-
-              {/* Info */}
-              <View className="flex-1 ml-3 justify-center">
-                <View className="flex-row items-center">
-                  <Text className="text-neutral-gray-800 text-lg font-semibold">
-                    {translator.name}
-                  </Text>
-                  <View
-                    className={`ml-2 w-2 h-2 rounded-full ${
-                      translator.online
-                        ? "bg-success"
-                        : "bg-neutral-gray-400"
-                    }`}
-                  />
-                </View>
-
-                <View className="flex-row items-center mt-1">
-                  <Ionicons name="language-outline" size={16} color="#666" />
-                  <Text className="ml-1 text-neutral-gray-600">
-                    {translator.language}
-                  </Text>
-                  <Text className="mx-2 text-neutral-gray-400">•</Text>
-                  <Ionicons name="star" size={16} color="#FFD700" />
-                  <Text className="ml-1 text-neutral-gray-600">
-                    {translator.rating}
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center mt-1">
-                  <Ionicons name="location-outline" size={16} color="#666" />
-                  <Text className="ml-1 text-neutral-gray-600">
-                    {translator.distance}
-                  </Text>
-                  <Text className="mx-2 text-neutral-gray-400">•</Text>
-                  <Ionicons name="briefcase-outline" size={16} color="#666" />
-                  <Text className="ml-1 text-neutral-gray-600">
-                    {translator.totalJobs} jobs
-                  </Text>
-                </View>
-              </View>
-
-              {/* Price */}
-              <View className="justify-center items-end">
-                <Text className="text-primary text-lg font-bold">
-                  ${translator.hourlyRate}
-                </Text>
-                <Text className="text-neutral-gray-500 text-xs">per hour</Text>
-              </View>
-            </View>
-
-            {/* Quick Action Buttons */}
-            <View className="flex-row justify-between mt-3 pt-3 border-t border-neutral-gray-200">
-              <TouchableOpacity className="flex-row items-center">
-                <Ionicons name="calendar-outline" size={18} color="#007BFF" />
-                <Text className="ml-1 text-primary">Book</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity className="flex-row items-center">
-                <Ionicons name="chatbubble-outline" size={18} color="#007BFF" />
-                <Text className="ml-1 text-primary">Message</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity className="flex-row items-center">
-                <Ionicons name="call-outline" size={18} color="#007BFF" />
-                <Text className="ml-1 text-primary">Call</Text>
-              </TouchableOpacity>
-            </View>
+              {filter === "all"
+                ? "All Translators"
+                : filter === "available"
+                ? "Available Now"
+                : "Top Rated"}
+            </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
-      {/* Popular Locations */}
-      <View className="mt-2 px-4 pb-6">
-        <Text className="text-lg font-bold text-neutral-gray-800 mb-2">
-          Popular Locations
-        </Text>
-        
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="pb-2"
-        >
-          {["Tokyo", "Paris", "New York", "Delhi", "Bangkok"].map((city, index) => (
+      {/* Translator List */}
+      <ScrollView
+        className="flex-1"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View className="p-4">
+          {filteredTranslators.map((translator) => (
             <TouchableOpacity
-              key={index}
-              className="mr-3 bg-white rounded-lg shadow-sm overflow-hidden w-40"
+              key={translator.id}
+              className="bg-white rounded-2xl p-4 mb-4 shadow-sm"
+              onPress={() => router.push(`/translator/${translator.id}`)}
             >
-              <View className="h-24 bg-primary opacity-80" />
-              <View className="p-2">
-                <Text className="font-medium">{city}</Text>
-                <Text className="text-xs text-neutral-gray-500">
-                  {10 + index * 3} translators available
-                </Text>
+              <View className="flex-row">
+                <Image
+                  source={{ uri: translator.photo }}
+                  className="w-20 h-20 rounded-xl"
+                />
+                <View className="flex-1 ml-4">
+                  <View className="flex-row justify-between items-start">
+                    <View>
+                      <Text className="text-lg font-semibold text-gray-900">
+                        {translator.name}
+                      </Text>
+                      <Text className="text-gray-600 text-sm">
+                        {translator.location}
+                      </Text>
+                    </View>
+                    {translator.available && (
+                      <View className="bg-green-100 rounded-full px-2 py-1">
+                        <Text className="text-green-600 text-xs">Available</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View className="flex-row items-center mt-2">
+                    <Ionicons name="star" size={16} color="#F59E0B" />
+                    <Text className="text-gray-900 ml-1">{translator.rating}</Text>
+                    <Text className="text-gray-600 ml-1">
+                      ({translator.reviews} reviews)
+                    </Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between mt-2">
+                    <Text className="text-gray-600 text-sm">
+                      {translator.languages.join(" • ")}
+                    </Text>
+                    <Text className="text-blue-600 font-semibold">
+                      €{translator.hourlyRate}/hr
+                    </Text>
+                  </View>
+                </View>
               </View>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
-} 
+}

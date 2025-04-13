@@ -7,7 +7,7 @@ export default function TabLayout() {
         headerShown: false,
         animation: "fade",
         tabBarStyle: {
-          display: 'none', // This tab bar isn't visible anyway
+          display: 'none',
         },
       }}
     >

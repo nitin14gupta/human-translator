@@ -1,601 +1,272 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
+  Switch,
   Platform,
-  Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { useAuth } from '../../context/AuthContext';
-import { createUserProfile } from '../../services/api';
+import { useRouter } from 'expo-router';
 
-// List of common languages travelers might need
-const commonLanguages = [
-  { code: 'en', name: 'English' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'fr', name: 'French' },
-  { code: 'de', name: 'German' },
-  { code: 'it', name: 'Italian' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ar', name: 'Arabic' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'hi', name: 'Hindi' },
-  { code: 'tr', name: 'Turkish' },
-];
-
-export default function TravelerInfo() {
-  const { t } = useTranslation();
+export default function TravelerInfoForm() {
   const router = useRouter();
-  const { user } = useAuth();
-  
-  // State variables
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [bio, setBio] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [nationality, setNationality] = useState('');
-  const [currentLocation, setCurrentLocation] = useState('');
-  const [emergencyContact, setEmergencyContact] = useState('');
-  const [travelPreferences, setTravelPreferences] = useState('');
-  const [languagesNeeded, setLanguagesNeeded] = useState('');
-  const [dietaryRestrictions, setDietaryRestrictions] = useState('');
-  const [medicalConditions, setMedicalConditions] = useState('');
-  
-  // For language suggestions
-  const [languageSuggestions, setLanguageSuggestions] = useState<{code: string, name: string}[]>([]);
-  
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Filter language suggestions based on input
-  useEffect(() => {
-    if (languagesNeeded.trim() === '') {
-      setLanguageSuggestions([]);
+  const [formData, setFormData] = useState({
+    // Personal Details
+    fullName: '',
+    email: '',
+    phone: '',
+    nationality: '',
+
+    // Travel Details
+    arrivalDate: '',
+    departureDate: '',
+    cities: [
+      { id: '1', name: 'Mumbai', selected: false },
+      { id: '2', name: 'Delhi', selected: false },
+      { id: '3', name: 'Bangalore', selected: false },
+      { id: '4', name: 'Chennai', selected: false },
+      { id: '5', name: 'Kolkata', selected: false },
+    ],
+
+    // Language Preferences
+    languages: [
+      { id: '1', name: 'Hindi', selected: false },
+      { id: '2', name: 'Tamil', selected: false },
+      { id: '3', name: 'Telugu', selected: false },
+      { id: '4', name: 'Bengali', selected: false },
+      { id: '5', name: 'Marathi', selected: false },
+    ],
+
+    // Preferences
+    preferredGender: 'any',
+    notifications: {
+      email: true,
+      sms: false,
+      inApp: true,
+    },
+  });
+
+  const handleSubmit = () => {
+    // Basic validation
+    if (!formData.fullName || !formData.email || !formData.phone) {
+      alert('Please fill in all required fields');
       return;
     }
-    
-    const filtered = commonLanguages.filter(lang => 
-      lang.name.toLowerCase().includes(languagesNeeded.toLowerCase())
-    );
-    setLanguageSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
-  }, [languagesNeeded]);
-  
-  // Pick image from library
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert(
-        t('permissions.mediaLibraryTitle'),
-        t('permissions.mediaLibraryMessage')
-      );
-      return;
-    }
-    
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-    }
+
+    // Submit form and navigate
+    router.push('/(tabs)/traveler');
   };
-  
-  // Take photo with camera
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert(
-        t('permissions.cameraTitle'),
-        t('permissions.cameraMessage')
-      );
-      return;
-    }
-    
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-    }
-  };
-  
-  // Select language from suggestions
-  const selectLanguage = (language: string) => {
-    setLanguagesNeeded(language);
-    setLanguageSuggestions([]);
-  };
-  
-  // Add language to the list
-  const addLanguage = (language: string) => {
-    if (!languagesNeeded.includes(language)) {
-      const updatedLanguages = languagesNeeded
-        ? `${languagesNeeded}, ${language}`
-        : language;
-      setLanguagesNeeded(updatedLanguages);
-    }
-    setLanguageSuggestions([]);
-  };
-  
-  // Submit profile info
-  const handleSubmit = async () => {
-    // Validate required fields
-    if (!phoneNumber) {
-      Alert.alert(
-        t('validation.missingFields'),
-        t('travelerInfo.phoneNumberRequired')
-      );
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      // Prepare form data for multipart/form-data
-      const formData = new FormData();
-      
-      // Add profile image if available
-      if (profileImage) {
-        const filename = profileImage.split('/').pop() || 'profile.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        formData.append('profile_picture', {
-          uri: profileImage,
-          name: filename,
-          type,
-        } as any);
-      }
-      
-      // Add profile data
-      const profileData = {
-        bio,
-        phone_number: phoneNumber,
-        nationality,
-        current_location: currentLocation,
-        emergency_contact: emergencyContact,
-        travel_preferences: travelPreferences,
-        languages_needed: languagesNeeded,
-        dietary_restrictions: dietaryRestrictions,
-        medical_conditions: medicalConditions
-      };
-      
-      formData.append('profile_data', JSON.stringify(profileData));
-      
-      // Submit profile
-      await createUserProfile(formData);
-      
-      // Show success message
-      Alert.alert(
-        t('travelerInfo.profileCreated'),
-        t('travelerInfo.profileCreatedMessage'),
-        [
-          {
-            text: t('common.continue'),
-            onPress: () => router.replace('/(tabs)/traveler')
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Error creating profile:', error);
-      Alert.alert(
-        t('common.error'),
-        t('travelerInfo.profileCreateError')
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // Skip profile creation
-  const skipProfileCreation = () => {
-    Alert.alert(
-      t('travelerInfo.skipProfile'),
-      t('travelerInfo.skipProfileMessage'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel'
-        },
-        {
-          text: t('common.continue'),
-          onPress: () => router.replace('/(tabs)/traveler')
-        }
-      ]
-    );
-  };
-  
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0066CC" />
-        <Text style={styles.loadingText}>{t('common.loading')}</Text>
-      </View>
-    );
-  }
-  
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.title}>{t('travelerInfo.title')}</Text>
-        <Text style={styles.subtitle}>{t('travelerInfo.subtitle')}</Text>
+    <ScrollView className="flex-1 bg-gray-50">
+      {/* Header */}
+      <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
+        <Text className="text-2xl font-bold text-gray-900">Create Profile</Text>
+        <Text className="text-gray-600 mt-1">Tell us about your travel needs</Text>
+      </View>
+
+      {/* Personal Details */}
+      <View className="bg-white mt-4 p-4">
+        <Text className="text-lg font-semibold text-gray-900 mb-4">Personal Details</Text>
         
-        {/* Profile Image */}
-        <View style={styles.profileImageContainer}>
-          <TouchableOpacity style={styles.profileImage} onPress={pickImage}>
-            {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.image} />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Ionicons name="person" size={60} color="#CCCCCC" />
-              </View>
-            )}
-          </TouchableOpacity>
-          <View style={styles.imageButtonsContainer}>
-            <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-              <Ionicons name="images-outline" size={20} color="#0066CC" />
-              <Text style={styles.imageButtonText}>{t('common.gallery')}</Text>
+        <View className="mb-4">
+          <Text className="text-gray-600 mb-2">Full Name *</Text>
+          <TextInput
+            value={formData.fullName}
+            onChangeText={(text) => setFormData({ ...formData, fullName: text })}
+            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
+            placeholder="Enter your full name"
+          />
+        </View>
+
+        <View className="mb-4">
+          <Text className="text-gray-600 mb-2">Email *</Text>
+          <TextInput
+            value={formData.email}
+            onChangeText={(text) => setFormData({ ...formData, email: text })}
+            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
+            placeholder="Enter your email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View className="mb-4">
+          <Text className="text-gray-600 mb-2">Phone Number *</Text>
+          <TextInput
+            value={formData.phone}
+            onChangeText={(text) => setFormData({ ...formData, phone: text })}
+            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
+            placeholder="Enter your phone number"
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View className="mb-4">
+          <Text className="text-gray-600 mb-2">Nationality</Text>
+          <TextInput
+            value={formData.nationality}
+            onChangeText={(text) => setFormData({ ...formData, nationality: text })}
+            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
+            placeholder="Enter your nationality"
+          />
+        </View>
+      </View>
+
+      {/* Travel Details */}
+      <View className="bg-white mt-4 p-4">
+        <Text className="text-lg font-semibold text-gray-900 mb-4">Travel Details</Text>
+
+        <View className="mb-4">
+          <Text className="text-gray-600 mb-2">Arrival Date</Text>
+          <TextInput
+            value={formData.arrivalDate}
+            onChangeText={(text) => setFormData({ ...formData, arrivalDate: text })}
+            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
+            placeholder="DD/MM/YYYY"
+          />
+        </View>
+
+        <View className="mb-4">
+          <Text className="text-gray-600 mb-2">Departure Date</Text>
+          <TextInput
+            value={formData.departureDate}
+            onChangeText={(text) => setFormData({ ...formData, departureDate: text })}
+            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
+            placeholder="DD/MM/YYYY"
+          />
+        </View>
+
+        <Text className="text-gray-600 mb-2">Cities to Visit</Text>
+        <View className="flex-row flex-wrap">
+          {formData.cities.map((city) => (
+            <TouchableOpacity
+              key={city.id}
+              className={`m-1 px-4 py-2 rounded-full border ${
+                city.selected 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+              onPress={() => {
+                const newCities = formData.cities.map(c =>
+                  c.id === city.id ? { ...c, selected: !c.selected } : c
+                );
+                setFormData({ ...formData, cities: newCities });
+              }}
+            >
+              <Text className={`${
+                city.selected ? 'text-blue-600' : 'text-gray-600'
+              }`}>
+                {city.name}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.imageButton} onPress={takePhoto}>
-              <Ionicons name="camera-outline" size={20} color="#0066CC" />
-              <Text style={styles.imageButtonText}>{t('common.camera')}</Text>
+          ))}
+        </View>
+      </View>
+
+      {/* Language Preferences */}
+      <View className="bg-white mt-4 p-4">
+        <Text className="text-lg font-semibold text-gray-900 mb-4">Language Preferences</Text>
+        
+        <Text className="text-gray-600 mb-2">Languages Needed</Text>
+        <View className="flex-row flex-wrap">
+          {formData.languages.map((lang) => (
+            <TouchableOpacity
+              key={lang.id}
+              className={`m-1 px-4 py-2 rounded-full border ${
+                lang.selected 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+              onPress={() => {
+                const newLangs = formData.languages.map(l =>
+                  l.id === lang.id ? { ...l, selected: !l.selected } : l
+                );
+                setFormData({ ...formData, languages: newLangs });
+              }}
+            >
+              <Text className={`${
+                lang.selected ? 'text-blue-600' : 'text-gray-600'
+              }`}>
+                {lang.name}
+              </Text>
             </TouchableOpacity>
+          ))}
+        </View>
+
+        <View className="mt-4">
+          <Text className="text-gray-600 mb-2">Preferred Translator Gender</Text>
+          <View className="flex-row">
+            {['any', 'male', 'female'].map((gender) => (
+              <TouchableOpacity
+                key={gender}
+                className={`mr-2 px-4 py-2 rounded-full border ${
+                  formData.preferredGender === gender
+                    ? 'bg-blue-50 border-blue-200'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+                onPress={() => setFormData({ ...formData, preferredGender: gender })}
+              >
+                <Text className={`capitalize ${
+                  formData.preferredGender === gender
+                    ? 'text-blue-600'
+                    : 'text-gray-600'
+                }`}>
+                  {gender}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
+      </View>
+
+      {/* Notification Preferences */}
+      <View className="bg-white mt-4 p-4">
+        <Text className="text-lg font-semibold text-gray-900 mb-4">Notifications</Text>
         
-        {/* Form Fields */}
-        <View style={styles.form}>
-          {/* Phone Number */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.phoneNumber')} *</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color="#6C757D" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('travelerInfo.phoneNumberPlaceholder')}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                keyboardType="phone-pad"
-              />
-            </View>
+        {Object.entries(formData.notifications).map(([key, value]) => (
+          <View key={key} className="flex-row items-center justify-between py-2">
+            <Text className="text-gray-900 capitalize">
+              {key === 'inApp' ? 'In-App Notifications' : `${key} Notifications`}
+            </Text>
+            <Switch
+              value={value}
+              onValueChange={(newValue) =>
+                setFormData({
+                  ...formData,
+                  notifications: {
+                    ...formData.notifications,
+                    [key]: newValue,
+                  },
+                })
+              }
+            />
           </View>
-          
-          {/* Nationality */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.nationality')}</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="flag-outline" size={20} color="#6C757D" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('travelerInfo.nationalityPlaceholder')}
-                value={nationality}
-                onChangeText={setNationality}
-              />
-            </View>
-          </View>
-          
-          {/* Current Location */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.currentLocation')}</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="location-outline" size={20} color="#6C757D" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('travelerInfo.currentLocationPlaceholder')}
-                value={currentLocation}
-                onChangeText={setCurrentLocation}
-              />
-            </View>
-          </View>
-          
-          {/* Languages Needed */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.languagesNeeded')}</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="chatbox-outline" size={20} color="#6C757D" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('travelerInfo.languagesNeededPlaceholder')}
-                value={languagesNeeded}
-                onChangeText={setLanguagesNeeded}
-              />
-            </View>
-            {languageSuggestions.length > 0 && (
-              <View style={styles.suggestionsList}>
-                {languageSuggestions.map((lang, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionItem}
-                    onPress={() => addLanguage(lang.name)}
-                  >
-                    <Text style={styles.suggestionText}>{lang.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-          
-          {/* Travel Preferences */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.travelPreferences')}</Text>
-            <View style={styles.textareaContainer}>
-              <TextInput
-                style={styles.textarea}
-                placeholder={t('travelerInfo.travelPreferencesPlaceholder')}
-                value={travelPreferences}
-                onChangeText={setTravelPreferences}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
-          
-          {/* Dietary Restrictions */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.dietaryRestrictions')}</Text>
-            <View style={styles.textareaContainer}>
-              <TextInput
-                style={styles.textarea}
-                placeholder={t('travelerInfo.dietaryRestrictionsPlaceholder')}
-                value={dietaryRestrictions}
-                onChangeText={setDietaryRestrictions}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
-          
-          {/* Medical Conditions */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.medicalConditions')}</Text>
-            <View style={styles.textareaContainer}>
-              <TextInput
-                style={styles.textarea}
-                placeholder={t('travelerInfo.medicalConditionsPlaceholder')}
-                value={medicalConditions}
-                onChangeText={setMedicalConditions}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
-          
-          {/* Emergency Contact */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.emergencyContact')}</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="alert-circle-outline" size={20} color="#6C757D" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={t('travelerInfo.emergencyContactPlaceholder')}
-                value={emergencyContact}
-                onChangeText={setEmergencyContact}
-              />
-            </View>
-          </View>
-          
-          {/* Bio */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('travelerInfo.bio')}</Text>
-            <View style={styles.textareaContainer}>
-              <TextInput
-                style={styles.textarea}
-                placeholder={t('travelerInfo.bioPlaceholder')}
-                value={bio}
-                onChangeText={setBio}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
-        </View>
-        
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.button, styles.skipButton]}
-            onPress={skipProfileCreation}
-          >
-            <Text style={styles.skipButtonText}>{t('common.skip')}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.button, styles.submitButton]}
-            onPress={handleSubmit}
-          >
-            <Text style={styles.submitButtonText}>{t('common.save')}</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        ))}
+      </View>
+
+      {/* Submit Button */}
+      <View className="p-4">
+        <TouchableOpacity
+          className="bg-blue-600 p-4 rounded-xl"
+          onPress={handleSubmit}
+        >
+          <Text className="text-white text-center font-semibold text-lg">
+            Create Profile
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Skip Button */}
+      <TouchableOpacity
+        className="px-4 py-3 mb-8"
+        onPress={() => router.push('/(tabs)/traveler')}
+      >
+        <Text className="text-blue-600 text-center">Skip for now</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#0066CC',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6C757D',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  profileImageContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  imagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    height: '100%',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imageButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  imageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 8,
-    padding: 8,
-  },
-  imageButtonText: {
-    marginLeft: 4,
-    color: '#0066CC',
-    fontSize: 14,
-  },
-  form: {
-    marginBottom: 24,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-    color: '#212529',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#CED4DA',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 50,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    height: 50,
-    color: '#212529',
-  },
-  textareaContainer: {
-    borderWidth: 1,
-    borderColor: '#CED4DA',
-    borderRadius: 8,
-    padding: 12,
-  },
-  textarea: {
-    height: 100,
-    color: '#212529',
-  },
-  suggestionsList: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CED4DA',
-    borderRadius: 8,
-    marginTop: 4,
-    maxHeight: 150,
-    zIndex: 1000,
-  },
-  suggestionItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  suggestionText: {
-    color: '#212529',
-    fontSize: 14,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  button: {
-    flex: 1,
-    height: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 6,
-  },
-  skipButton: {
-    backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: '#CED4DA',
-  },
-  skipButtonText: {
-    color: '#6C757D',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  submitButton: {
-    backgroundColor: '#0066CC',
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-});

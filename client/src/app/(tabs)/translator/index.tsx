@@ -5,282 +5,237 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
+  Platform,
 } from "react-native";
-import { useTranslation } from "react-i18next";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../../context/AuthContext";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
+import { LineChart } from "react-native-chart-kit";
+import { StatusBar } from "expo-status-bar";
 
-// Mock data for upcoming bookings
-const MOCK_BOOKINGS = [
-  {
-    id: "b1",
-    travelerName: "John Smith",
-    location: "Tokyo Tower",
-    date: "2024-03-25",
-    time: "14:00",
-    duration: 2,
-    amount: 120,
-    status: "pending",
-  },
-  {
-    id: "b2",
-    travelerName: "Emma Wilson",
-    location: "Shibuya Crossing",
-    date: "2024-03-26",
-    time: "10:00",
-    duration: 3,
-    amount: 180,
-    status: "confirmed",
-  },
-];
+interface BookingData {
+  id: string;
+  travelerName: string;
+  date: string;
+  time: string;
+  location: string;
+  status: "upcoming" | "completed" | "cancelled";
+  amount: number;
+}
 
-// Mock data for earnings stats
-const EARNINGS_STATS = {
-  thisMonth: 2450,
-  pendingJobs: 3,
-  totalJobs: 48,
-  averageRating: 4.8,
-  currency: "EUR",
-};
-
-// Quick Actions
-const QUICK_ACTIONS = [
-  {
-    icon: "wallet-outline" as const,
-    title: "Earnings",
-    route: "/(tabs)/translator/earnings" as const,
-    color: "#0066CC",
-  },
-  {
-    icon: "chatbubble-outline" as const,
-    title: "Messages",
-    route: "/(tabs)/translator/chat" as const,
-    color: "#28A745",
-  },
-  {
-    icon: "person-outline" as const,
-    title: "Profile",
-    route: "/(tabs)/translator/profile" as const,
-    color: "#6C757D",
-  },
-];
-
-export default function TranslatorDashboardScreen() {
-  const { t } = useTranslation();
+export default function DashboardScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  const [isAvailable, setIsAvailable] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = React.useCallback(() => {
+  // Mock data for earnings chart
+  const chartData = {
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    datasets: [{
+      data: [65, 85, 110, 75, 95, 120, 80],
+    }],
+  };
+
+  // Mock data for upcoming bookings
+  const upcomingBookings: BookingData[] = [
+    {
+      id: "1",
+      travelerName: "John Smith",
+      date: "Today",
+      time: "14:00 - 16:00",
+      location: "Eiffel Tower",
+      status: "upcoming",
+      amount: 120,
+    },
+    {
+      id: "2",
+      travelerName: "Maria Garcia",
+      date: "Tomorrow",
+      time: "10:00 - 12:00",
+      location: "Louvre Museum",
+      status: "upcoming",
+      amount: 90,
+    },
+    {
+      id: "3",
+      travelerName: "David Chen",
+      date: "23 Jun",
+      time: "15:30 - 17:30",
+      location: "Notre-Dame",
+      status: "upcoming",
+      amount: 100,
+    },
+  ];
+
+  const onRefresh = () => {
     setRefreshing(true);
     // Simulate data refresh
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
-
-  const toggleAvailability = () => {
-    setIsAvailable(!isAvailable);
+    setTimeout(() => setRefreshing(false), 1500);
   };
 
   return (
-    <ScrollView
-      className="flex-1 bg-neutral-gray-100"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={["#0066CC", "#0052A3"]}
-        className="px-5 pt-12 pb-6 rounded-b-3xl"
+    <View className="flex-1 bg-gray-50">
+      <StatusBar style="dark" />
+      
+      {/* Header */}
+      <View className="bg-white pt-12 pb-4 px-4">
+        <Text className="text-2xl font-bold text-gray-900">Welcome Back!</Text>
+        <Text className="text-gray-600 mt-1">Here's your dashboard overview</Text>
+      </View>
+
+      <ScrollView
+        className="flex-1"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <View className="flex-row justify-between items-center mb-6">
-          <View>
-            <Text className="text-white text-lg opacity-80">
-              {t("dashboard.welcome")}
-              {user?.name ? `, ${user.name.split(" ")[0]}!` : "!"}
-            </Text>
-            <Text className="text-white text-2xl font-bold mt-1">
-              {t("dashboard.dashboard")}
-            </Text>
+        {/* Quick Stats */}
+        <View className="flex-row px-4 py-4">
+          <View className="flex-1 bg-white rounded-2xl p-4 mr-2 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <View className="w-8 h-8 rounded-full bg-blue-100 items-center justify-center">
+                <Ionicons name="wallet" size={18} color="#1a73e8" />
+              </View>
+              <Text className="text-gray-600 ml-2">Today's Earnings</Text>
+            </View>
+            <Text className="text-2xl font-bold text-gray-900">€120</Text>
           </View>
-          <TouchableOpacity
-            onPress={toggleAvailability}
-            className={`px-4 py-2 rounded-full ${
-              isAvailable ? "bg-green-500" : "bg-neutral-gray-400"
-            }`}
-          >
-            <Text className="text-white font-medium">
-              {isAvailable ? "Available" : "Unavailable"}
-            </Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Earnings Preview */}
-        <View className="bg-white bg-opacity-10 rounded-xl p-4">
-          <Text className="text-white text-sm opacity-80">
-            {t("dashboard.earningsThisMonth")}
-          </Text>
-          <Text className="text-white text-3xl font-bold mt-1">
-            €{EARNINGS_STATS.thisMonth}
-          </Text>
-          <View className="flex-row mt-2">
-            <View className="bg-white bg-opacity-20 px-3 py-1 rounded-full mr-2">
-              <Text className="text-white text-xs">
-                {EARNINGS_STATS.pendingJobs} pending jobs
-              </Text>
+          <View className="flex-1 bg-white rounded-2xl p-4 ml-2 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <View className="w-8 h-8 rounded-full bg-green-100 items-center justify-center">
+                <Ionicons name="calendar" size={18} color="#15803d" />
+              </View>
+              <Text className="text-gray-600 ml-2">Today's Sessions</Text>
             </View>
-            <View className="bg-white bg-opacity-20 px-3 py-1 rounded-full">
-              <Text className="text-white text-xs">
-                {EARNINGS_STATS.totalJobs} total jobs
-              </Text>
-            </View>
+            <Text className="text-2xl font-bold text-gray-900">2</Text>
           </View>
         </View>
-      </LinearGradient>
 
-      {/* Quick Actions */}
-      <View className="flex-row justify-between mx-4 mt-[-30]">
-        {QUICK_ACTIONS.map((action, index) => (
-          <TouchableOpacity
-            key={index}
-            className="bg-white rounded-xl shadow-sm p-4 w-[80]"
-            onPress={() => router.push(action.route)}
-          >
-            <View
-              className="w-10 h-10 rounded-full mb-2 items-center justify-center"
-              style={{ backgroundColor: `${action.color}20` }}
+        {/* Earnings Chart */}
+        <View className="bg-white mx-4 rounded-2xl p-4 shadow-sm">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-900">Weekly Earnings</Text>
+            <TouchableOpacity 
+              className="bg-blue-50 px-3 py-1 rounded-full"
+              onPress={() => router.push("/translator/earnings")}
             >
-              <Ionicons name={action.icon} size={20} color={action.color} />
-            </View>
-            <Text className="text-xs text-neutral-gray-600">{action.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Today's Overview */}
-      <View className="mx-4 mt-6">
-        <Text className="text-lg font-bold text-neutral-gray-800 mb-3">
-          {t("dashboard.todayOverview")}
-        </Text>
-        <View className="bg-white rounded-xl shadow-sm p-4">
-          <View className="flex-row justify-between mb-4">
-            <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-primary">
-                {EARNINGS_STATS.pendingJobs}
-              </Text>
-              <Text className="text-xs text-neutral-gray-600">Pending Jobs</Text>
-            </View>
-            <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-success">
-                {EARNINGS_STATS.averageRating}
-              </Text>
-              <Text className="text-xs text-neutral-gray-600">Avg Rating</Text>
-            </View>
-            <View className="items-center flex-1">
-              <Text className="text-2xl font-bold text-warning">
-                {EARNINGS_STATS.totalJobs}
-              </Text>
-              <Text className="text-xs text-neutral-gray-600">Total Jobs</Text>
-            </View>
+              <Text className="text-blue-600">See Details</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      </View>
 
-      {/* Weekly Stats */}
-      <View className="mx-4 mt-6">
-        <Text className="text-lg font-bold text-neutral-gray-800 mb-3">
-          {t("dashboard.weeklyStats")}
-        </Text>
-        <View className="bg-white rounded-xl shadow-sm p-4">
-          {/* Add weekly stats visualization here */}
+          <LineChart
+            data={chartData}
+            width={Platform.OS === 'web' ? 500 : 320}
+            height={220}
+            chartConfig={{
+              backgroundColor: "#ffffff",
+              backgroundGradientFrom: "#ffffff",
+              backgroundGradientTo: "#ffffff",
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(26, 115, 232, ${opacity})`,
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: "6",
+                strokeWidth: "2",
+                stroke: "#1a73e8"
+              }
+            }}
+            bezier
+            style={{
+              marginVertical: 8,
+              borderRadius: 16
+            }}
+          />
         </View>
-      </View>
 
-      {/* Upcoming Bookings */}
-      <View className="mx-4 mt-6 mb-6">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-lg font-bold text-neutral-gray-800">
-            {t("dashboard.upcomingBookings")}
-          </Text>
-          <TouchableOpacity>
-            <Text className="text-primary">See All</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Upcoming Bookings */}
+        <View className="mx-4 mt-4 mb-6">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold text-gray-900">Upcoming Sessions</Text>
+            <TouchableOpacity 
+              className="bg-blue-50 px-3 py-1 rounded-full"
+              onPress={() => router.push("/translator/requests")}
+            >
+              <Text className="text-blue-600">View All</Text>
+            </TouchableOpacity>
+          </View>
 
-        {MOCK_BOOKINGS.map((booking) => (
-          <View
-            key={booking.id}
-            className="bg-white rounded-xl shadow-sm p-4 mb-3"
-          >
-            <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-base font-medium text-neutral-gray-800">
-                {booking.travelerName}
-              </Text>
-              <View
-                className={`px-2 py-1 rounded-full ${
-                  booking.status === "confirmed"
-                    ? "bg-success bg-opacity-20"
-                    : "bg-warning bg-opacity-20"
-                }`}
-              >
-                <Text
-                  className={`text-xs ${
-                    booking.status === "confirmed"
-                      ? "text-success"
-                      : "text-warning"
-                  }`}
-                >
-                  {booking.status}
+          {upcomingBookings.map((booking) => (
+            <TouchableOpacity
+              key={booking.id}
+              className="bg-white rounded-2xl p-4 mb-3 shadow-sm"
+              onPress={() => router.push(`/translator/requests/${booking.id}`)}
+            >
+              <View className="flex-row justify-between items-start">
+                <View>
+                  <Text className="text-base font-semibold text-gray-900">
+                    {booking.travelerName}
+                  </Text>
+                  <View className="flex-row items-center mt-1">
+                    <Ionicons name="time-outline" size={14} color="#6B7280" />
+                    <Text className="text-gray-600 ml-1">
+                      {booking.date}, {booking.time}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center mt-1">
+                    <Ionicons name="location-outline" size={14} color="#6B7280" />
+                    <Text className="text-gray-600 ml-1">{booking.location}</Text>
+                  </View>
+                </View>
+                <Text className="text-lg font-bold text-blue-600">
+                  €{booking.amount}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="location-outline" size={16} color="#6C757D" />
-              <Text className="text-sm text-neutral-gray-600 ml-1">
-                {booking.location}
-              </Text>
+      {/* Quick Actions */}
+      <View className="bg-white border-t border-gray-200 px-4 py-4">
+        <View className="flex-row justify-around">
+          <TouchableOpacity 
+            className="items-center"
+            onPress={() => router.push("/translator/requests")}
+          >
+            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
+              <Ionicons name="calendar" size={24} color="#1a73e8" />
             </View>
+            <Text className="text-sm text-gray-600">New Request</Text>
+          </TouchableOpacity>
 
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="time-outline" size={16} color="#6C757D" />
-              <Text className="text-sm text-neutral-gray-600 ml-1">
-                {booking.date} at {booking.time} ({booking.duration}h)
-              </Text>
+          <TouchableOpacity 
+            className="items-center"
+            onPress={() => router.push("/translator/chat")}
+          >
+            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
+              <Ionicons name="chatbubbles" size={24} color="#1a73e8" />
             </View>
+            <Text className="text-sm text-gray-600">Messages</Text>
+          </TouchableOpacity>
 
-            <View className="flex-row justify-between items-center pt-2 border-t border-neutral-gray-200">
-              <Text className="text-primary font-bold">
-                €{booking.amount}
-              </Text>
-              <View className="flex-row">
-                {booking.status === "pending" && (
-                  <>
-                    <TouchableOpacity className="bg-success px-4 py-2 rounded-full mr-2">
-                      <Text className="text-white font-medium">Accept</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="bg-error px-4 py-2 rounded-full">
-                      <Text className="text-white font-medium">Decline</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-                {booking.status === "confirmed" && (
-                  <TouchableOpacity className="bg-primary px-4 py-2 rounded-full">
-                    <Text className="text-white font-medium">View Details</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+          <TouchableOpacity 
+            className="items-center"
+            onPress={() => router.push("/translator/earnings")}
+          >
+            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
+              <Ionicons name="wallet" size={24} color="#1a73e8" />
             </View>
-          </View>
-        ))}
+            <Text className="text-sm text-gray-600">Earnings</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            className="items-center"
+            onPress={() => router.push("/translator/profile")}
+          >
+            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
+              <Ionicons name="settings" size={24} color="#1a73e8" />
+            </View>
+            <Text className="text-sm text-gray-600">Settings</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </ScrollView>
+    </View>
   );
-} 
+}
