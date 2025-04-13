@@ -1,75 +1,108 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, SafeAreaView, StatusBar, Dimensions } from 'react-native';
-import { Link } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { View, ActivityIndicator, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
+import { getLanguage } from '../services/languageService';
 
-export default function WelcomeScreen() {
-  const screenHeight = Dimensions.get('window').height;
+export default function Index() {
   const router = useRouter();
-  return (
-    <SafeAreaView className="flex-1 bg-neutral-white">
-      <StatusBar barStyle="dark-content" />
-      
-      <View className="flex-1 relative">
-        {/* Main Image */}
-        <View className="w-full h-[45%] rounded-2xl overflow-hidden p-12">
-          <Image 
-            source={require('../../assets/images/welcome-screen-image.png')}
-            className="w-full h-full "
-            resizeMode="cover"
-          />
-          
-          {/* Language Selection Circles */}
-          <View className="absolute top-7 left-7">
-            <View className="w-10 h-10 bg-neutral-white rounded-full items-center justify-center shadow-md">
-              <Text className="font-montserrat font-semibold text-primary">EN</Text>
-            </View>
-          </View>
-          
-          <View className="absolute bottom-10 left-20">
-            <View className="w-10 h-10 bg-neutral-white rounded-full items-center justify-center shadow-md">
-              <Text className="font-montserrat font-semibold text-primary">FR</Text>
-            </View>
-          </View>
-          
-          <View className="absolute top-20 right-7">
-            <View className="w-10 h-10 bg-neutral-white rounded-full items-center justify-center shadow-md">
-              <Text className="font-montserrat font-semibold text-primary">ES</Text>
-            </View>
-          </View>
-        </View>
+  const { isAuthenticated, isLoading: authLoading, getUserType, user } = useAuth();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    const checkInitialRoute = async () => {
+      try {
+        console.log('Auth state:', { isAuthenticated, authLoading, user });
+        setIsNavigating(true);
         
-        {/* Content Area */}
-        <View className="flex-1 px-8 pt-10 pb-6 justify-between">
-          {/* Heading and Subtext */}
-          <View>
-            <Text className="text-4xl font-heading font-bold text-primary text-center mb-4">
-              Break Language Barriers, Connect with Confidence
-            </Text>
-            
-            <Text className="text-base font-body text-neutral-gray-600 text-center text-xl">
-              Book a local translator or offer your skills to travelers worldwide.
-            </Text>
-          </View>
+        // Check for auth token directly - this is the most reliable indicator of authentication
+        const authToken = await AsyncStorage.getItem('authToken');
+        const userType = await getUserType(); // This should work even without a fully loaded user object
+        
+        // Check if this is a first-time user who needs to complete profile setup
+        const needsProfileSetup = await AsyncStorage.getItem('needsProfileSetup');
+        
+        console.log('Auth checks:', { 
+          hasToken: !!authToken, 
+          userType,
+          needsProfileSetup
+        });
+        
+        // If this is a first-time user who needs to complete profile setup, send them there first
+        if (authToken && needsProfileSetup === 'true') {
+          console.log('First-time user needs to complete profile setup');
           
-          {/* Get Started Button */}
-          <View className="mb-5">
-            <TouchableOpacity 
-            className="bg-primary py-4 rounded-xl flex-row items-center justify-center"
-            onPress={() => router.push('/(shared)/languageSelection')}
-            >
-              <Text className="text-white font-poppins font-semibold text-base mr-2">Get Started</Text>
-              <Ionicons name="arrow-forward" size={20} color="white" />
-            </TouchableOpacity>
-          </View>
+          if (userType === 'traveler') {
+            console.log('Redirecting new traveler to profile setup');
+            router.replace('/(shared)/travelerInfo');
+          } else {
+            console.log('Redirecting new translator to profile setup');
+            router.replace('/(shared)/translatorInfo');
+          }
+          return;
+        }
+        
+        // If we have a token and profile is already set up, go to tabs
+        if (authToken) {
+          console.log('Returning user with auth token, redirecting to appropriate tab');
           
-          {/* Bottom Indicator */}
-          <View className="items-center">
-            <View className="w-10 h-1 bg-neutral-gray-400 rounded-full" />
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+          if (userType === 'traveler') {
+            console.log('User is a traveler, redirecting to traveler tabs');
+            router.replace('/(tabs)/traveler');
+          } else {
+            console.log('User is a translator, redirecting to translator tabs');
+            router.replace('/(tabs)/translator');
+          }
+          return;
+        }
+        
+        // Fall back to normal auth check (for cases where token might be missing but user is loaded)
+        if (isAuthenticated && user) {
+          console.log('Using user object authentication, redirecting to appropriate tab');
+          if (userType === 'traveler') {
+            router.replace('/(tabs)/traveler');
+          } else {
+            router.replace('/(tabs)/translator');
+          }
+          return;
+        }
+        
+        // Check if user has selected language before
+        const currentLanguage = await getLanguage();
+        console.log('Current language:', currentLanguage);
+        
+        // If language is already set but not logged in, go to role selection
+        if (currentLanguage) {
+          console.log('Language set but not logged in, redirecting to role selection');
+          router.replace('/roleSelection');
+        } 
+        // If first time or language not set, go to language selection
+        else {
+          console.log('First time or language not set, redirecting to language selection');
+          router.replace('/languageSelection');
+        }
+      } catch (error) {
+        console.error('Error determining initial route:', error);
+        // Default to language selection on error
+        router.replace('/languageSelection');
+      } finally {
+        setIsNavigating(false);
+      }
+    };
+
+    if (!authLoading) {
+      checkInitialRoute();
+    }
+  }, [router, isAuthenticated, authLoading, user]);
+
+  // Show loading indicator while determining route
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color="#0066CC" />
+      <Text style={{ marginTop: 10 }}>
+        {authLoading ? 'Loading user data...' : 'Navigating...'}
+      </Text>
+    </View>
   );
 }
