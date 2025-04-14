@@ -5,268 +5,180 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Switch,
   Platform,
+  Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { createUserProfile } from '@/src/services/api';
+
+interface Language {
+  id: string;
+  name: string;
+  selected: boolean;
+}
 
 export default function TravelerInfoForm() {
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    // Personal Details
     fullName: '',
-    email: '',
     phone: '',
     nationality: '',
-
-    // Travel Details
-    arrivalDate: '',
-    departureDate: '',
-    cities: [
-      { id: '1', name: 'Mumbai', selected: false },
-      { id: '2', name: 'Delhi', selected: false },
-      { id: '3', name: 'Bangalore', selected: false },
-      { id: '4', name: 'Chennai', selected: false },
-      { id: '5', name: 'Kolkata', selected: false },
-    ],
-
-    // Language Preferences
     languages: [
       { id: '1', name: 'Hindi', selected: false },
-      { id: '2', name: 'Tamil', selected: false },
-      { id: '3', name: 'Telugu', selected: false },
-      { id: '4', name: 'Bengali', selected: false },
-      { id: '5', name: 'Marathi', selected: false },
-    ],
-
-    // Preferences
-    preferredGender: 'any',
-    notifications: {
-      email: true,
-      sms: false,
-      inApp: true,
-    },
+      { id: '2', name: 'English', selected: false },
+      { id: '3', name: 'Tamil', selected: false },
+    ] as Language[]
   });
 
-  const handleSubmit = () => {
-    // Basic validation
-    if (!formData.fullName || !formData.email || !formData.phone) {
-      alert('Please fill in all required fields');
-      return;
-    }
+  const handleSubmit = async () => {
+    try {
+      // Basic validation
+      if (!formData.fullName || !formData.phone || !formData.nationality) {
+        Alert.alert('Error', 'Please fill in all required fields');
+        return;
+      }
 
-    // Submit form and navigate
-    router.push('/(tabs)/traveler');
+      const selectedLanguages = formData.languages.filter(lang => lang.selected);
+      if (selectedLanguages.length === 0) {
+        Alert.alert('Error', 'Please select at least one language you need translation for');
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      // Prepare data for API
+      const profileData = {
+        full_name: formData.fullName,
+        phone_number: formData.phone,
+        nationality: formData.nationality,
+        languages_needed: selectedLanguages.map(lang => ({
+          language_code: lang.id,
+          language_name: lang.name
+        }))
+      };
+
+      // Make API call to create profile
+      await createUserProfile(profileData);
+
+      // Navigate to traveler home
+      router.push('/(tabs)/traveler');
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create profile. Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-white pt-12 pb-4 px-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">Create Profile</Text>
-        <Text className="text-gray-600 mt-1">Tell us about your travel needs</Text>
-      </View>
+    <ScrollView className="flex-1 bg-neutral-gray-100">
+      <LinearGradient
+        colors={['#007BFF', '#0056b3']}
+        className="pt-12 pb-6 px-5 rounded-b-3xl"
+      >
+        <Text className="text-white text-2xl font-heading mb-2">Create Profile</Text>
+        <Text className="text-white text-opacity-80 font-body">
+          Tell us about your translation needs
+        </Text>
+      </LinearGradient>
 
-      {/* Personal Details */}
-      <View className="bg-white mt-4 p-4">
-        <Text className="text-lg font-semibold text-gray-900 mb-4">Personal Details</Text>
-        
-        <View className="mb-4">
-          <Text className="text-gray-600 mb-2">Full Name *</Text>
-          <TextInput
-            value={formData.fullName}
-            onChangeText={(text) => setFormData({ ...formData, fullName: text })}
-            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
-            placeholder="Enter your full name"
-          />
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-gray-600 mb-2">Email *</Text>
-          <TextInput
-            value={formData.email}
-            onChangeText={(text) => setFormData({ ...formData, email: text })}
-            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-gray-600 mb-2">Phone Number *</Text>
-          <TextInput
-            value={formData.phone}
-            onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
-            placeholder="Enter your phone number"
-            keyboardType="phone-pad"
-          />
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-gray-600 mb-2">Nationality</Text>
-          <TextInput
-            value={formData.nationality}
-            onChangeText={(text) => setFormData({ ...formData, nationality: text })}
-            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
-            placeholder="Enter your nationality"
-          />
-        </View>
-      </View>
-
-      {/* Travel Details */}
-      <View className="bg-white mt-4 p-4">
-        <Text className="text-lg font-semibold text-gray-900 mb-4">Travel Details</Text>
-
-        <View className="mb-4">
-          <Text className="text-gray-600 mb-2">Arrival Date</Text>
-          <TextInput
-            value={formData.arrivalDate}
-            onChangeText={(text) => setFormData({ ...formData, arrivalDate: text })}
-            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
-            placeholder="DD/MM/YYYY"
-          />
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-gray-600 mb-2">Departure Date</Text>
-          <TextInput
-            value={formData.departureDate}
-            onChangeText={(text) => setFormData({ ...formData, departureDate: text })}
-            className="border border-gray-200 rounded-xl p-3 bg-white text-gray-900"
-            placeholder="DD/MM/YYYY"
-          />
-        </View>
-
-        <Text className="text-gray-600 mb-2">Cities to Visit</Text>
-        <View className="flex-row flex-wrap">
-          {formData.cities.map((city) => (
-            <TouchableOpacity
-              key={city.id}
-              className={`m-1 px-4 py-2 rounded-full border ${
-                city.selected 
-                  ? 'bg-blue-50 border-blue-200' 
-                  : 'bg-gray-50 border-gray-200'
-              }`}
-              onPress={() => {
-                const newCities = formData.cities.map(c =>
-                  c.id === city.id ? { ...c, selected: !c.selected } : c
-                );
-                setFormData({ ...formData, cities: newCities });
-              }}
-            >
-              <Text className={`${
-                city.selected ? 'text-blue-600' : 'text-gray-600'
-              }`}>
-                {city.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Language Preferences */}
-      <View className="bg-white mt-4 p-4">
-        <Text className="text-lg font-semibold text-gray-900 mb-4">Language Preferences</Text>
-        
-        <Text className="text-gray-600 mb-2">Languages Needed</Text>
-        <View className="flex-row flex-wrap">
-          {formData.languages.map((lang) => (
-            <TouchableOpacity
-              key={lang.id}
-              className={`m-1 px-4 py-2 rounded-full border ${
-                lang.selected 
-                  ? 'bg-blue-50 border-blue-200' 
-                  : 'bg-gray-50 border-gray-200'
-              }`}
-              onPress={() => {
-                const newLangs = formData.languages.map(l =>
-                  l.id === lang.id ? { ...l, selected: !l.selected } : l
-                );
-                setFormData({ ...formData, languages: newLangs });
-              }}
-            >
-              <Text className={`${
-                lang.selected ? 'text-blue-600' : 'text-gray-600'
-              }`}>
-                {lang.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View className="mt-4">
-          <Text className="text-gray-600 mb-2">Preferred Translator Gender</Text>
-          <View className="flex-row">
-            {['any', 'male', 'female'].map((gender) => (
-              <TouchableOpacity
-                key={gender}
-                className={`mr-2 px-4 py-2 rounded-full border ${
-                  formData.preferredGender === gender
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
-                onPress={() => setFormData({ ...formData, preferredGender: gender })}
-              >
-                <Text className={`capitalize ${
-                  formData.preferredGender === gender
-                    ? 'text-blue-600'
-                    : 'text-gray-600'
-                }`}>
-                  {gender}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-
-      {/* Notification Preferences */}
-      <View className="bg-white mt-4 p-4">
-        <Text className="text-lg font-semibold text-gray-900 mb-4">Notifications</Text>
-        
-        {Object.entries(formData.notifications).map(([key, value]) => (
-          <View key={key} className="flex-row items-center justify-between py-2">
-            <Text className="text-gray-900 capitalize">
-              {key === 'inApp' ? 'In-App Notifications' : `${key} Notifications`}
-            </Text>
-            <Switch
-              value={value}
-              onValueChange={(newValue) =>
-                setFormData({
-                  ...formData,
-                  notifications: {
-                    ...formData.notifications,
-                    [key]: newValue,
-                  },
-                })
-              }
+      <View className="p-4 -mt-6">
+        <View className="bg-white rounded-2xl shadow-sm p-6">
+          {/* Full Name */}
+          <View className="mb-6">
+            <Text className="text-neutral-gray-800 font-heading mb-2">Full Name *</Text>
+            <TextInput
+              value={formData.fullName}
+              onChangeText={(text) => setFormData({ ...formData, fullName: text })}
+              className="border border-neutral-gray-200 rounded-xl p-4 bg-white text-neutral-gray-800 font-body"
+              placeholder="Enter your full name"
+              editable={!isSubmitting}
             />
           </View>
-        ))}
-      </View>
 
-      {/* Submit Button */}
-      <View className="p-4">
+          {/* Phone */}
+          <View className="mb-6">
+            <Text className="text-neutral-gray-800 font-heading mb-2">Phone Number *</Text>
+            <TextInput
+              value={formData.phone}
+              onChangeText={(text) => setFormData({ ...formData, phone: text })}
+              className="border border-neutral-gray-200 rounded-xl p-4 bg-white text-neutral-gray-800 font-body"
+              placeholder="Enter your phone number"
+              keyboardType="phone-pad"
+              editable={!isSubmitting}
+            />
+          </View>
+
+          {/* Nationality */}
+          <View className="mb-6">
+            <Text className="text-neutral-gray-800 font-heading mb-2">Nationality *</Text>
+            <TextInput
+              value={formData.nationality}
+              onChangeText={(text) => setFormData({ ...formData, nationality: text })}
+              className="border border-neutral-gray-200 rounded-xl p-4 bg-white text-neutral-gray-800 font-body"
+              placeholder="Enter your nationality"
+              editable={!isSubmitting}
+            />
+          </View>
+
+          {/* Languages */}
+          <View>
+            <Text className="text-neutral-gray-800 font-heading mb-2">Languages Needed *</Text>
+            <View className="flex-row flex-wrap">
+              {formData.languages.map((lang) => (
+                <TouchableOpacity
+                  key={lang.id}
+                  className={`mr-2 mb-2 px-4 py-2 rounded-xl border ${
+                    lang.selected 
+                      ? 'bg-primary border-primary'
+                      : 'bg-white border-neutral-gray-200'
+                  }`}
+                  onPress={() => {
+                    if (!isSubmitting) {
+                      const newLangs = formData.languages.map(l =>
+                        l.id === lang.id ? { ...l, selected: !l.selected } : l
+                      );
+                      setFormData({ ...formData, languages: newLangs });
+                    }
+                  }}
+                  disabled={isSubmitting}
+                >
+                  <Text className={`font-body ${
+                    lang.selected ? 'text-white' : 'text-neutral-gray-600'
+                  }`}>
+                    {lang.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Submit Button */}
         <TouchableOpacity
-          className="bg-blue-600 p-4 rounded-xl"
+          className={`bg-primary mt-6 p-4 rounded-xl ${isSubmitting ? 'opacity-50' : ''}`}
           onPress={handleSubmit}
+          disabled={isSubmitting}
         >
-          <Text className="text-white text-center font-semibold text-lg">
-            Create Profile
+          <Text className="text-white text-center font-heading text-lg">
+            {isSubmitting ? 'Creating Profile...' : 'Create Profile'}
           </Text>
         </TouchableOpacity>
-      </View>
 
-      {/* Skip Button */}
-      <TouchableOpacity
-        className="px-4 py-3 mb-8"
-        onPress={() => router.push('/(tabs)/traveler')}
-      >
-        <Text className="text-blue-600 text-center">Skip for now</Text>
-      </TouchableOpacity>
+        {/* Skip Button */}
+        <TouchableOpacity
+          className="mt-4 mb-8"
+          onPress={() => router.push('/(tabs)/traveler')}
+          disabled={isSubmitting}
+        >
+          <Text className="text-primary text-center font-body">Skip for now</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }

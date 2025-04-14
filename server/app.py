@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from dotenv import load_dotenv
 from extensions import db, migrate, jwt, cors
 import os
+from datetime import timedelta
 
 # Load environment variables
 load_dotenv()
@@ -15,8 +16,10 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/human_translator")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret-key")
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", 3600))  # 1 hour
-    app.config["JWT_REFRESH_TOKEN_EXPIRES"] = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES", 2592000))  # 30 days
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=30)  # Single token with 30 day expiration
+    app.config["JWT_TOKEN_LOCATION"] = ["headers"]
+    app.config["JWT_HEADER_NAME"] = "Authorization"
+    app.config["JWT_HEADER_TYPE"] = "Bearer"
     
     # Initialize extensions with the app
     db.init_app(app)
@@ -25,7 +28,29 @@ def create_app():
     cors.init_app(app, supports_credentials=True)
     
     # Import models after extensions are initialized
-    from models import User, TranslatorProfile, TravelerProfile, LanguageProficiency
+    from models import User, TranslatorProfile, TravelerProfile
+    
+    # JWT error handlers
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error):
+        return jsonify({
+            'error': 'Invalid token',
+            'message': str(error)
+        }), 401
+
+    @jwt.unauthorized_loader
+    def unauthorized_callback(error):
+        return jsonify({
+            'error': 'No token provided',
+            'message': str(error)
+        }), 401
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_data):
+        return jsonify({
+            'error': 'Token has expired',
+            'message': 'Please log in again'
+        }), 401
     
     # Health check endpoint
     @app.route('/')

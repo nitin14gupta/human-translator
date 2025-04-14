@@ -19,58 +19,28 @@ CREATE TABLE password_reset_tokens (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Refresh tokens for JWT authentication
-CREATE TABLE refresh_tokens (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token VARCHAR(255) NOT NULL UNIQUE,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 
 -- Store profiles for translators
 CREATE TABLE translator_profiles (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    bio TEXT,
-    profile_picture VARCHAR(255),
-    phone_number VARCHAR(20),
-    specialties VARCHAR(255),
-    hourly_rate DECIMAL(10, 2),
-    is_available BOOLEAN NOT NULL DEFAULT TRUE,
-    experience_years INTEGER,
-    education TEXT,
-    certificates TEXT,
-    emergency_contact VARCHAR(255),
+    full_name VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    hourly_rate FLOAT NOT NULL,
+    languages JSONB NOT NULL,  -- Store language objects as JSON
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_translator_user UNIQUE (user_id)
-);
-
--- Store language proficiencies for translators
-CREATE TABLE language_proficiencies (
-    id SERIAL PRIMARY KEY,
-    translator_profile_id INTEGER NOT NULL REFERENCES translator_profiles(id) ON DELETE CASCADE,
-    language_code VARCHAR(10) NOT NULL,
-    proficiency_level VARCHAR(20) NOT NULL, -- beginner, intermediate, advanced, native
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_translator_language UNIQUE (translator_profile_id, language_code)
 );
 
 -- Store profiles for travelers
 CREATE TABLE traveler_profiles (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    bio TEXT,
-    profile_picture VARCHAR(255),
-    phone_number VARCHAR(20),
-    nationality VARCHAR(100),
-    current_location VARCHAR(255),
-    emergency_contact VARCHAR(255),
-    travel_preferences TEXT,
-    languages_needed VARCHAR(255),
-    dietary_restrictions VARCHAR(255),
-    medical_conditions TEXT,
+    full_name VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    nationality VARCHAR(100) NOT NULL,
+    languages_needed JSONB NOT NULL,  -- Store language objects as JSON
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_traveler_user UNIQUE (user_id)
@@ -87,9 +57,8 @@ CREATE TABLE active_sessions (
 
 -- Create indexes for performance
 CREATE INDEX idx_user_email ON users(email);
-CREATE INDEX idx_translator_available ON translator_profiles(is_available);
-CREATE INDEX idx_lang_proficiency_translator ON language_proficiencies(translator_profile_id);
-CREATE INDEX idx_traveler_location ON traveler_profiles(current_location);
+CREATE INDEX idx_translator_hourly_rate ON translator_profiles(hourly_rate);
+CREATE INDEX idx_traveler_nationality ON traveler_profiles(nationality);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -114,4 +83,7 @@ CREATE TRIGGER update_translator_profiles_updated_at
 CREATE TRIGGER update_traveler_profiles_updated_at
     BEFORE UPDATE ON traveler_profiles
     FOR EACH ROW
-    EXECUTE PROCEDURE update_updated_at_column(); 
+    EXECUTE PROCEDURE update_updated_at_column();
+
+-- Remove language_proficiencies table since we're using JSON now
+DROP TABLE IF EXISTS language_proficiencies; 

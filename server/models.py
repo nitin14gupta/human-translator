@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import secrets
 import string
 from extensions import db
+import json
 
 # Generate a random token
 def generate_token(length=32):
@@ -121,61 +122,23 @@ class TranslatorProfile(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
-    bio = db.Column(db.Text)
-    profile_picture = db.Column(db.String(255))
-    phone_number = db.Column(db.String(20))
-    specialties = db.Column(db.String(255))
-    hourly_rate = db.Column(db.Numeric(10, 2))
-    is_available = db.Column(db.Boolean, nullable=False, default=True)
-    experience_years = db.Column(db.Integer)
-    education = db.Column(db.Text)
-    certificates = db.Column(db.Text)
-    emergency_contact = db.Column(db.String(255))
+    full_name = db.Column(db.String(255), nullable=False)
+    phone_number = db.Column(db.String(20), nullable=False)
+    hourly_rate = db.Column(db.Float, nullable=False)
+    languages = db.Column(db.JSON, nullable=False)  # List of language objects
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    
-    # Relationships
-    language_proficiencies = db.relationship('LanguageProficiency', backref='translator_profile', lazy=True, cascade='all, delete')
     
     def as_dict(self):
         return {
             'id': self.id,
             'user_id': self.user_id,
-            'bio': self.bio,
-            'profile_picture': self.profile_picture,
+            'full_name': self.full_name,
             'phone_number': self.phone_number,
-            'specialties': self.specialties,
-            'hourly_rate': float(self.hourly_rate) if self.hourly_rate else None,
-            'is_available': self.is_available,
-            'experience_years': self.experience_years,
-            'education': self.education,
-            'certificates': self.certificates,
-            'emergency_contact': self.emergency_contact,
-            'language_proficiencies': [lp.as_dict() for lp in self.language_proficiencies],
+            'hourly_rate': self.hourly_rate,
+            'languages': self.languages,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
-        }
-
-class LanguageProficiency(db.Model):
-    __tablename__ = 'language_proficiencies'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    translator_profile_id = db.Column(db.Integer, db.ForeignKey('translator_profiles.id'), nullable=False)
-    language_code = db.Column(db.String(10), nullable=False)
-    proficiency_level = db.Column(db.String(20), nullable=False)  # beginner, intermediate, advanced, native
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    
-    __table_args__ = (
-        db.UniqueConstraint('translator_profile_id', 'language_code', name='unique_translator_language'),
-    )
-    
-    def as_dict(self):
-        return {
-            'id': self.id,
-            'translator_profile_id': self.translator_profile_id,
-            'language_code': self.language_code,
-            'proficiency_level': self.proficiency_level,
-            'created_at': self.created_at.isoformat()
         }
 
 class TravelerProfile(db.Model):
@@ -183,16 +146,10 @@ class TravelerProfile(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
-    bio = db.Column(db.Text)
-    profile_picture = db.Column(db.String(255))
-    phone_number = db.Column(db.String(20))
-    nationality = db.Column(db.String(100))
-    current_location = db.Column(db.String(255))
-    emergency_contact = db.Column(db.String(255))
-    travel_preferences = db.Column(db.Text)
-    languages_needed = db.Column(db.String(255))
-    dietary_restrictions = db.Column(db.String(255))
-    medical_conditions = db.Column(db.Text)
+    full_name = db.Column(db.String(255), nullable=False)
+    phone_number = db.Column(db.String(20), nullable=False)
+    nationality = db.Column(db.String(100), nullable=False)
+    languages_needed = db.Column(db.JSON, nullable=False)  # List of language objects
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
@@ -200,16 +157,11 @@ class TravelerProfile(db.Model):
         return {
             'id': self.id,
             'user_id': self.user_id,
-            'bio': self.bio,
-            'profile_picture': self.profile_picture,
+            'full_name': self.full_name,
             'phone_number': self.phone_number,
             'nationality': self.nationality,
-            'current_location': self.current_location,
-            'emergency_contact': self.emergency_contact,
-            'travel_preferences': self.travel_preferences,
             'languages_needed': self.languages_needed,
-            'dietary_restrictions': self.dietary_restrictions,
-            'medical_conditions': self.medical_conditions,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
-        } 
+        }
+       

@@ -92,7 +92,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const clearAuthData = async () => {
     try {
       await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('userId');
       await AsyncStorage.removeItem('isNeedTranslator');
       setUser(null);
@@ -162,10 +161,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const token = await AsyncStorage.getItem('authToken');
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json'
     };
     
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers['Authorization'] = `Bearer ${token.trim()}`;
+    } else {
+      throw new Error('No auth token found');
     }
     
     return headers;
@@ -187,9 +189,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       // Save token and user info
-      if (data.access_token) {
-        await AsyncStorage.setItem('authToken', data.access_token);
-        await AsyncStorage.setItem('refreshToken', data.refresh_token);
+      if (data.token) {
+        await AsyncStorage.setItem('authToken', data.token);
         await AsyncStorage.setItem('userId', data.user_id.toString());
         await AsyncStorage.setItem('isNeedTranslator', data.is_traveler.toString());
         await AsyncStorage.setItem('preferredLanguage', data.preferred_language);
@@ -229,6 +230,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
       
+      console.log('Registering with data:', userData);
+      
       const data = await apiFetch('/api/register', {
         method: 'POST',
         headers: {
@@ -237,19 +240,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify(userData),
       });
       
+      console.log('Registration response:', data);
+      
       // If registration automatically logs in the user
-      if (data.access_token) {
-        await AsyncStorage.setItem('authToken', data.access_token);
-        await AsyncStorage.setItem('refreshToken', data.refresh_token);
+      if (data.token) {
+        console.log('Saving auth data...');
+        await AsyncStorage.setItem('authToken', data.token);
         await AsyncStorage.setItem('userId', data.user_id.toString());
         await AsyncStorage.setItem('isNeedTranslator', userData.is_traveler.toString());
         await AsyncStorage.setItem('preferredLanguage', userData.preferred_language);
+        
         // Save additional user data for persistence
         await AsyncStorage.setItem('userEmail', userData.email);
         await AsyncStorage.setItem('userName', userData.name);
         
         // Add flag to indicate this is a new user who needs to set up profile
         await AsyncStorage.setItem('needsProfileSetup', 'true');
+        
+        console.log('Auth data saved, setting user state...');
         
         setUser({
           id: data.user_id.toString(),
@@ -258,6 +266,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           isTraveler: userData.is_traveler,
           preferredLanguage: userData.preferred_language,
         });
+        
+        console.log('User state set');
+      } else {
+        console.error('No token received in registration response');
+        throw new Error('Registration failed - no authentication token received');
       }
     } catch (error) {
       console.error('Error registering user:', error);
@@ -271,23 +284,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     setIsLoading(true);
     try {
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
-      
-      // Try to call logout API if refresh token exists, but don't block on failure
-      if (refreshToken) {
-        try {
-          await apiFetch('/api/logout', {
-            method: 'POST',
-            headers: await createAuthHeaders(),
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-        } catch (apiError) {
-          // Log but don't throw the error - we still want to clear local data
-          console.warn('Error calling logout API:', apiError);
-        }
+      try {
+        await apiFetch('/api/logout', {
+          method: 'POST',
+          headers: await createAuthHeaders(),
+        });
+      } catch (apiError) {
+        console.warn('Error calling logout API:', apiError);
       }
       
-      // Always clear local data regardless of API call success
+      // Always clear local data
       await clearAuthData();
       
       // Clear additional user data
@@ -295,8 +301,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await AsyncStorage.removeItem('userName');
       await AsyncStorage.removeItem('preferredLanguage');
     } catch (error) {
-      console.error('Error clearing local data during logout:', error);
-      // Only throw if we couldn't clear local data
+      console.error('Error during logout:', error);
       throw error;
     } finally {
       setIsLoading(false);

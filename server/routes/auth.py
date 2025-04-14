@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from models import User, PasswordResetToken, RefreshToken
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from models import User, PasswordResetToken
 from extensions import db
 from email_validator import validate_email, EmailNotValidError
 import re
@@ -69,26 +69,14 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        # Generate tokens
-        access_token = create_access_token(identity=user.id)
-        refresh_token = RefreshToken.create_token(user.id)
+        # Generate single token
+        access_token = create_access_token(identity=str(user.id))
         
-        # Create appropriate profile based on user type
-        if user.is_traveler:
-            from models import TravelerProfile
-            profile = TravelerProfile(user_id=user.id)
-            db.session.add(profile)
-        else:
-            from models import TranslatorProfile
-            profile = TranslatorProfile(user_id=user.id)
-            db.session.add(profile)
-        
-        db.session.commit()
+        # Don't create empty profiles here - let user fill them in later
         
         return jsonify({
             'user_id': user.id,
-            'access_token': access_token,
-            'refresh_token': refresh_token,
+            'token': access_token,
             'is_traveler': user.is_traveler,
             'preferred_language': user.preferred_language,
             'message': 'User registered successfully'
@@ -113,14 +101,12 @@ def login():
     if not user or not user.check_password(data['password']):
         return jsonify({'error': 'Invalid email or password'}), 401
     
-    # Generate tokens
-    access_token = create_access_token(identity=user.id)
-    refresh_token = RefreshToken.create_token(user.id)
+    # Generate single token
+    access_token = create_access_token(identity=str(user.id))
     
     return jsonify({
         'user_id': user.id,
-        'access_token': access_token,
-        'refresh_token': refresh_token,
+        'token': access_token,
         'is_traveler': user.is_traveler,
         'preferred_language': user.preferred_language,
         'message': 'Login successful'
@@ -193,45 +179,9 @@ def reset_password_confirm():
         logging.error(f"Password reset error: {str(e)}")
         return jsonify({'error': 'Failed to reset password'}), 500
 
-@auth_bp.route('/refresh', methods=['POST'])
-def refresh():
-    data = request.get_json()
-    
-    # Validate required fields
-    if 'refresh_token' not in data:
-        return jsonify({'error': 'Refresh token is required'}), 400
-    
-    # Find refresh token in database
-    token_record = RefreshToken.query.filter_by(token=data['refresh_token']).first()
-    
-    if not token_record:
-        return jsonify({'error': 'Invalid refresh token'}), 401
-    
-    # Check if token is expired
-    if token_record.expires_at < datetime.utcnow():
-        db.session.delete(token_record)
-        db.session.commit()
-        return jsonify({'error': 'Refresh token expired'}), 401
-    
-    # Generate new access token
-    access_token = create_access_token(identity=token_record.user_id)
-    
-    return jsonify({
-        'access_token': access_token,
-        'message': 'Token refreshed successfully'
-    }), 200
-
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    user_id = get_jwt_identity()
-    data = request.get_json()
-    
-    # Delete refresh token if provided
-    if 'refresh_token' in data:
-        RefreshToken.query.filter_by(token=data['refresh_token'], user_id=user_id).delete()
-        db.session.commit()
-    
     return jsonify({
         'message': 'Logged out successfully'
     }), 200 

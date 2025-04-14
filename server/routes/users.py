@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import User, TranslatorProfile, TravelerProfile, LanguageProficiency
+from models import User, TranslatorProfile, TravelerProfile
 from extensions import db
 import logging
 
@@ -76,20 +76,9 @@ def update_user_profile():
             if 'is_available' in data:
                 profile.is_available = data['is_available']
             
-            # Handle language proficiencies
+            # Handle languages directly in the JSON field
             if 'languages' in data and isinstance(data['languages'], list):
-                # Clear existing language proficiencies
-                LanguageProficiency.query.filter_by(translator_profile_id=profile.id).delete()
-                
-                # Add new language proficiencies
-                for lang in data['languages']:
-                    if 'language_code' in lang and 'proficiency_level' in lang:
-                        language_proficiency = LanguageProficiency(
-                            translator_profile_id=profile.id,
-                            language_code=lang['language_code'],
-                            proficiency_level=lang['proficiency_level']
-                        )
-                        db.session.add(language_proficiency)
+                profile.languages = data['languages']
     
     try:
         db.session.commit()
