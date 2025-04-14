@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,17 +12,33 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { apiFetch } from "../../../services/api";
+
+interface Language {
+  language_code: string;
+  language_name: string;
+  proficiency_level?: string;
+}
 
 interface Translator {
   id: string;
-  name: string;
-  photo: string;
-  languages: string[];
+  full_name: string;
+  photo_url: string;
+  languages: Language[];
   location: string;
   rating: number;
   reviews: number;
-  hourlyRate: number;
-  available: boolean;
+  hourly_rate: number;
+  is_available: boolean;
+  total_sessions: number;
+}
+
+interface SearchResponse {
+  translators: Translator[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
 }
 
 export default function HomeScreen() {
@@ -30,65 +46,65 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "available" | "top">("all");
+  const [translators, setTranslators] = useState<Translator[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Mock data for featured translators
-  const translators: Translator[] = [
-    {
-      id: "1",
-      name: "Sarah Martin",
-      photo: "https://placekitten.com/200/200",
-      languages: ["English", "French", "Spanish"],
-      location: "Paris, France",
-      rating: 4.9,
-      reviews: 124,
-      hourlyRate: 45,
-      available: true,
-    },
-    {
-      id: "2",
-      name: "Jean Dupont",
-      photo: "https://placekitten.com/201/201",
-      languages: ["French", "English"],
-      location: "Lyon, France",
-      rating: 4.8,
-      reviews: 89,
-      hourlyRate: 40,
-      available: true,
-    },
-    {
-      id: "3",
-      name: "Maria Garcia",
-      photo: "https://placekitten.com/202/202",
-      languages: ["Spanish", "French", "English"],
-      location: "Barcelona, Spain",
-      rating: 4.7,
-      reviews: 56,
-      hourlyRate: 35,
-      available: false,
-    },
-  ];
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    // Simulate data refresh
-    setTimeout(() => setRefreshing(false), 1500);
+  // Function to fetch translators
+  const fetchTranslators = async (page: number = 1) => {
+    try {
+      const params = new URLSearchParams();
+      
+      // Add search query as location filter
+      if (searchQuery) {
+        params.append('location', searchQuery);
+      }
+      
+      // Add filters
+      if (activeFilter === 'available') {
+        params.append('available', 'true');
+      } else if (activeFilter === 'top') {
+        params.append('min_rating', '4.8');
+      }
+      
+      params.append('page', page.toString());
+      params.append('per_page', '10');
+      
+      const response = await apiFetch<SearchResponse>(`/api/translators/search?${params.toString()}`);
+      setTranslators(response.translators);
+      setCurrentPage(page);
+      return response;
+    } catch (error) {
+      console.error('Error fetching translators:', error);
+      return null;
+    }
   };
 
-  const filteredTranslators = translators.filter(translator => {
-    if (activeFilter === "available" && !translator.available) return false;
-    if (activeFilter === "top" && translator.rating < 4.8) return false;
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        translator.name.toLowerCase().includes(query) ||
-        translator.languages.some(lang => lang.toLowerCase().includes(query)) ||
-        translator.location.toLowerCase().includes(query)
-      );
-    }
-    
-    return true;
-  });
+  // Initial load
+  useEffect(() => {
+    const loadTranslators = async () => {
+      setLoading(true);
+      await fetchTranslators();
+      setLoading(false);
+    };
+    loadTranslators();
+  }, []);
+
+  // Refresh when search or filter changes
+  useEffect(() => {
+    const refreshSearch = async () => {
+      setLoading(true);
+      await fetchTranslators(1); // Reset to first page
+      setLoading(false);
+    };
+    refreshSearch();
+  }, [searchQuery, activeFilter]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchTranslators(currentPage);
+    setRefreshing(false);
+  };
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -106,7 +122,7 @@ export default function HomeScreen() {
           <Ionicons name="search" size={20} color="#6B7280" />
           <TextInput
             className="flex-1 ml-2 text-gray-900"
-            placeholder="Search by language, location, or name"
+            placeholder="Search by location"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -118,39 +134,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="bg-white py-2"
-      >
-        {(["all", "available", "top"] as const).map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            className={`px-4 py-2 mx-2 rounded-full ${
-              activeFilter === filter
-                ? "bg-blue-600"
-                : "bg-gray-100"
-            }`}
-            onPress={() => setActiveFilter(filter)}
-          >
-            <Text
-              className={`font-medium ${
-                activeFilter === filter
-                  ? "text-white"
-                  : "text-gray-600"
-              }`}
-            >
-              {filter === "all"
-                ? "All Translators"
-                : filter === "available"
-                ? "Available Now"
-                : "Top Rated"}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       {/* Translator List */}
       <ScrollView
         className="flex-1"
@@ -159,54 +142,64 @@ export default function HomeScreen() {
         }
       >
         <View className="p-4">
-          {filteredTranslators.map((translator) => (
-            <TouchableOpacity
-              key={translator.id}
-              className="bg-white rounded-2xl p-4 mb-4 shadow-sm"
-              onPress={() => router.push(`/translator/${translator.id}`)}
-            >
-              <View className="flex-row">
-                <Image
-                  source={{ uri: translator.photo }}
-                  className="w-20 h-20 rounded-xl"
-                />
-                <View className="flex-1 ml-4">
-                  <View className="flex-row justify-between items-start">
-                    <View>
-                      <Text className="text-lg font-semibold text-gray-900">
-                        {translator.name}
-                      </Text>
-                      <Text className="text-gray-600 text-sm">
-                        {translator.location}
+          {loading ? (
+            <Text className="text-center text-gray-600">Loading...</Text>
+          ) : translators.length === 0 ? (
+            <Text className="text-center text-gray-600">No translators found</Text>
+          ) : (
+            translators.map((translator) => (
+              <TouchableOpacity
+                key={translator.id}
+                className="bg-white rounded-2xl p-4 mb-4 shadow-sm"
+                onPress={() => router.push(`/translator/${translator.id}`)}
+              >
+                <View className="flex-row">
+                  <Image
+                    source={{ uri: translator.photo_url }}
+                    className="w-20 h-20 rounded-xl"
+                    defaultSource={require('@/assets/images/icon.png')}
+                    onError={(e) => {
+                      console.log('Error loading image:', e.nativeEvent.error);
+                    }}
+                  />
+                  <View className="flex-1 ml-4">
+                    <View className="flex-row justify-between items-start">
+                      <View>
+                        <Text className="text-lg font-semibold text-gray-900">
+                          {translator.full_name}
+                        </Text>
+                        <Text className="text-gray-600 text-sm">
+                          {translator.location || 'Location not specified'}
+                        </Text>
+                      </View>
+                      {translator.is_available && (
+                        <View className="bg-green-100 rounded-full px-2 py-1">
+                          <Text className="text-green-600 text-xs">Available</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View className="flex-row items-center mt-2">
+                      <Ionicons name="star" size={16} color="#F59E0B" />
+                      <Text className="text-gray-900 ml-1">{translator.rating.toFixed(1)}</Text>
+                      <Text className="text-gray-600 ml-1">
+                        ({translator.reviews} reviews)
                       </Text>
                     </View>
-                    {translator.available && (
-                      <View className="bg-green-100 rounded-full px-2 py-1">
-                        <Text className="text-green-600 text-xs">Available</Text>
-                      </View>
-                    )}
-                  </View>
 
-                  <View className="flex-row items-center mt-2">
-                    <Ionicons name="star" size={16} color="#F59E0B" />
-                    <Text className="text-gray-900 ml-1">{translator.rating}</Text>
-                    <Text className="text-gray-600 ml-1">
-                      ({translator.reviews} reviews)
-                    </Text>
-                  </View>
-
-                  <View className="flex-row items-center justify-between mt-2">
-                    <Text className="text-gray-600 text-sm">
-                      {translator.languages.join(" • ")}
-                    </Text>
-                    <Text className="text-blue-600 font-semibold">
-                      €{translator.hourlyRate}/hr
-                    </Text>
+                    <View className="flex-row items-center justify-between mt-2">
+                      <Text className="text-gray-600 text-sm">
+                        {translator.languages.map(l => l.language_name).join(" • ")}
+                      </Text>
+                      <Text className="text-blue-600 font-semibold">
+                        €{translator.hourly_rate.toFixed(2)}/hr
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
     </View>

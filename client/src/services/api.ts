@@ -71,7 +71,7 @@ export const createAuthHeaders = async () => {
 };
 
 // Wrapper for fetch with error handling
-export const apiFetch = async (endpoint: string, options?: RequestInit) => {
+export const apiFetch = async <T = any>(endpoint: string, options?: RequestInit): Promise<T> => {
   try {
     if (isOffline) {
       throw new Error('No internet connection');
@@ -142,7 +142,7 @@ export const apiFetch = async (endpoint: string, options?: RequestInit) => {
     }
     
     const data = await response.json();
-    return data;
+    return data as T;
   } catch (error) {
     console.error('API Error:', error);
     throw error;

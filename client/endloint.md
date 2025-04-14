@@ -12,9 +12,6 @@ This API powers the backend of a multilingual travel assistance platform, enabli
 
 | Endpoint | Method | Purpose | Description |
 |---------|--------|---------|-------------|
-| `/api/auth/register-traveler` | POST | Register traveler | Sign-up endpoint for travelers; stores user data (email, password, etc.). |
-| `/api/auth/login` | POST | Authenticate traveler | Authenticates traveler and returns a JWT token. |
-| `/api/travelers/profile` | GET/PUT | View/update traveler profile | Displays and updates travel preferences, languages, and other details. |
 | `/api/translators/search` | GET | Find available translators | Filters translators based on language, location, and date. |
 | `/api/bookings` | POST | Create booking | Used when a traveler books a translator with session details (date, hours, location). |
 | `/api/bookings` | GET | List all bookings | Returns all upcoming and past sessions for the traveler. |
@@ -30,9 +27,6 @@ This API powers the backend of a multilingual travel assistance platform, enabli
 
 | Endpoint | Method | Purpose | Description |
 |---------|--------|---------|-------------|
-| `/api/auth/register-translator` | POST | Register translator | Sign-up for translators including languages, bio, and availability. |
-| `/api/auth/login` | POST | Login and receive JWT | Authenticates translator and returns a JWT token. |
-| `/api/translators/me` | GET/PUT | View/update translator profile | Allows managing rates, languages, and certifications. |
 | `/api/translators/availability` | POST/PUT | Set or update availability | Sets or modifies working hours/calendar. |
 | `/api/requests` | GET | View new booking requests | Lists incoming session requests to accept or decline. |
 | `/api/requests/:id/accept` | POST | Accept a request | Accepts a session request from a traveler. |

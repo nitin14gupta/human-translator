@@ -67,16 +67,26 @@ export default function TranslatorInfoForm() {
         }))
       };
 
-      // Make API call to create profile
-      await createUserProfile(profileData);
+      console.log('Submitting profile data:', JSON.stringify(profileData));
 
-      // Navigate to translator home
-      router.push('/(tabs)/translator');
+      try {
+        // Make API call to create profile
+        await createUserProfile(profileData);
+  
+        // Navigate to translator home
+        router.push('/(tabs)/translator');
+      } catch (apiError: any) {
+        console.error('API Error:', apiError.message);
+        Alert.alert(
+          'Error',
+          apiError.message || 'Failed to create profile. Please try again.'
+        );
+      }
     } catch (error) {
-      console.error('Error creating profile:', error);
+      console.error('Error in form submission:', error);
       Alert.alert(
         'Error',
-        'Failed to create profile. Please try again.'
+        'Something went wrong processing your form. Please try again.'
       );
     } finally {
       setIsSubmitting(false);

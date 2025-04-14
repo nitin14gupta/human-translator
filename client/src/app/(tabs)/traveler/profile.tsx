@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,48 +13,104 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useAuth } from "../../../context/AuthContext";
+import { apiFetch } from "../../../services/api";
+import CircularProgress from "../../../components/CircularProgress";
 
 interface Language {
-  code: string;
+  language_code: string;
+  language_name: string;
+}
+
+interface EmergencyContact {
   name: string;
-  level: "native" | "fluent" | "intermediate" | "basic";
+  relationship: string;
+  phone: string;
+  email?: string;
+}
+
+interface TravelerProfile {
+  id: number;
+  user_id: number;
+  photo_url: string;
+  bio: string;
+  nationality: string;
+  languages_needed: Language[];
+  current_location: string;
+  travel_preferences: {
+    preferred_language: string;
+    preferred_currency: string;
+    accommodation_type?: string;
+    travel_style?: string[];
+  };
+  interests: string[];
+  emergency_contact: EmergencyContact;
+  profile_completion: number;
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: "John Smith",
-    email: "john.smith@example.com",
-    phone: "+1 234 567 8900",
-    languages: [
-      { code: "en", name: "English", level: "native" },
-      { code: "fr", name: "French", level: "basic" },
-    ] as Language[],
-    notifications: {
-      bookingUpdates: true,
-      messages: true,
-      promotions: false,
-      newsletter: false,
+  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<TravelerProfile>({
+    id: 0,
+    user_id: 0,
+    photo_url: "",
+    bio: "",
+    nationality: "",
+    languages_needed: [],
+    current_location: "",
+    travel_preferences: {
+      preferred_language: "en",
+      preferred_currency: "EUR",
     },
-    preferences: {
-      darkMode: false,
-      autoTranslate: true,
+    interests: [],
+    emergency_contact: {
+      name: "",
+      relationship: "",
+      phone: "",
     },
+    profile_completion: 0,
   });
 
-  const handleSave = () => {
-    // Validate data
-    if (!profileData.name.trim()) {
-      Alert.alert("Error", "Name is required");
-      return;
-    }
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        if (user?.id) {
+          const response = await apiFetch<TravelerProfile>(`/api/profiles/traveler/${user.id}`);
+          setProfileData(response);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        Alert.alert('Error', 'Failed to load profile data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Save changes
-    setIsEditing(false);
-    Alert.alert("Success", "Profile updated successfully");
+    fetchProfile();
+  }, [user]);
+
+  const handleSave = async () => {
+    try {
+      if (!user?.id) {
+        Alert.alert('Error', 'User ID not found');
+        return;
+      }
+
+      const response = await apiFetch<TravelerProfile>(`/api/profiles/traveler/${user.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(profileData),
+      });
+
+      setProfileData(response);
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile');
+    }
   };
 
   const handleSignOut = () => {
@@ -75,6 +131,14 @@ export default function ProfileScreen() {
     );
   };
 
+  if (loading) {
+    return (
+      <View className="flex-1 bg-gray-50 justify-center items-center">
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
@@ -94,11 +158,25 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView className="flex-1">
+        {/* Profile Completion */}
+        <View className="bg-white p-4 mb-4">
+          <View className="items-center">
+            <CircularProgress 
+              percentage={profileData.profile_completion} 
+              radius={40} 
+              strokeWidth={10} 
+            />
+            <Text className="mt-2 text-gray-600">
+              Profile Completion: {profileData.profile_completion}%
+            </Text>
+          </View>
+        </View>
+
         {/* Profile Photo Section */}
         <View className="bg-white p-4 items-center border-b border-gray-200">
           <View className="relative">
             <Image
-              source={{ uri: "https://placekitten.com/200/200" }}
+              source={{ uri: profileData.photo_url || "https://placekitten.com/200/200" }}
               className="w-24 h-24 rounded-full"
             />
             {isEditing && (
@@ -110,71 +188,63 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             )}
           </View>
-          
+        </View>
+
+        {/* Bio Section */}
+        <View className="bg-white mt-4 p-4">
+          <Text className="text-lg font-semibold text-gray-900 mb-2">Bio</Text>
           {isEditing ? (
             <TextInput
-              value={profileData.name}
-              onChangeText={(text) => setProfileData({ ...profileData, name: text })}
-              className="text-xl font-semibold text-gray-900 mt-4 text-center"
-              placeholder="Your Name"
+              value={profileData.bio}
+              onChangeText={(text) => setProfileData({ ...profileData, bio: text })}
+              className="text-gray-600 min-h-[100]"
+              multiline
+              placeholder="Tell us about yourself..."
             />
           ) : (
-            <Text className="text-xl font-semibold text-gray-900 mt-4">
-              {profileData.name}
-            </Text>
+            <Text className="text-gray-600">{profileData.bio || "No bio added yet"}</Text>
           )}
         </View>
 
-        {/* Contact Information */}
+        {/* Nationality Section */}
         <View className="bg-white mt-4 p-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">Contact Information</Text>
-          
-          <View className="mb-4">
-            <Text className="text-gray-600 mb-1">Email</Text>
-            {isEditing ? (
-              <TextInput
-                value={profileData.email}
-                onChangeText={(text) => setProfileData({ ...profileData, email: text })}
-                className="text-gray-900"
-                keyboardType="email-address"
-              />
-            ) : (
-              <Text className="text-gray-900">{profileData.email}</Text>
-            )}
-          </View>
-
-          <View>
-            <Text className="text-gray-600 mb-1">Phone</Text>
-            {isEditing ? (
-              <TextInput
-                value={profileData.phone}
-                onChangeText={(text) => setProfileData({ ...profileData, phone: text })}
-                className="text-gray-900"
-                keyboardType="phone-pad"
-              />
-            ) : (
-              <Text className="text-gray-900">{profileData.phone}</Text>
-            )}
-          </View>
+          <Text className="text-lg font-semibold text-gray-900 mb-2">Nationality</Text>
+          {isEditing ? (
+            <TextInput
+              value={profileData.nationality}
+              onChangeText={(text) => setProfileData({ ...profileData, nationality: text })}
+              className="text-gray-900"
+              placeholder="Your nationality"
+            />
+          ) : (
+            <Text className="text-gray-900">{profileData.nationality || "Not specified"}</Text>
+          )}
         </View>
 
-        {/* Languages Section */}
+        {/* Current Location */}
         <View className="bg-white mt-4 p-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-2">Languages I Speak</Text>
-          {profileData.languages.map((language) => (
+          <Text className="text-lg font-semibold text-gray-900 mb-2">Current Location</Text>
+          {isEditing ? (
+            <TextInput
+              value={profileData.current_location}
+              onChangeText={(text) => setProfileData({ ...profileData, current_location: text })}
+              className="text-gray-900"
+              placeholder="Where are you now?"
+            />
+          ) : (
+            <Text className="text-gray-900">{profileData.current_location || "Not specified"}</Text>
+          )}
+        </View>
+
+        {/* Languages Needed */}
+        <View className="bg-white mt-4 p-4">
+          <Text className="text-lg font-semibold text-gray-900 mb-2">Languages I Need Help With</Text>
+          {profileData.languages_needed.map((language, index) => (
             <View 
-              key={language.code}
+              key={index}
               className="flex-row items-center justify-between py-2"
             >
-              <View className="flex-row items-center">
-                <Text className="text-gray-900">{language.name}</Text>
-                {language.level === "native" && (
-                  <View className="bg-blue-100 rounded-full px-2 py-1 ml-2">
-                    <Text className="text-blue-600 text-xs">Native</Text>
-                  </View>
-                )}
-              </View>
-              <Text className="text-gray-600 capitalize">{language.level}</Text>
+              <Text className="text-gray-900">{language.language_name}</Text>
             </View>
           ))}
           {isEditing && (
@@ -188,60 +258,135 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Notifications Section */}
+        {/* Interests */}
         <View className="bg-white mt-4 p-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-2">Notifications</Text>
-          {Object.entries(profileData.notifications).map(([key, value]) => (
-            <View 
-              key={key}
-              className="flex-row items-center justify-between py-2"
+          <Text className="text-lg font-semibold text-gray-900 mb-2">Interests</Text>
+          <View className="flex-row flex-wrap">
+            {profileData.interests.map((interest, index) => (
+              <View 
+                key={index}
+                className="bg-gray-100 rounded-full px-3 py-1 m-1"
+              >
+                <Text className="text-gray-800">{interest}</Text>
+              </View>
+            ))}
+          </View>
+          {isEditing && (
+            <TouchableOpacity 
+              className="mt-2 flex-row items-center"
+              onPress={() => Alert.alert("Add Interest", "Interest selection not implemented")}
             >
-              <Text className="text-gray-900 capitalize">
-                {key.replace(/([A-Z])/g, ' $1').trim()}
-              </Text>
-              <Switch
-                value={value}
-                onValueChange={(newValue) => 
-                  setProfileData({
-                    ...profileData,
-                    notifications: {
-                      ...profileData.notifications,
-                      [key]: newValue,
-                    },
-                  })
-                }
-                disabled={!isEditing}
-              />
-            </View>
-          ))}
+              <Ionicons name="add-circle-outline" size={20} color="#1a73e8" />
+              <Text className="text-blue-600 ml-1">Add Interest</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Preferences Section */}
+        {/* Travel Preferences */}
         <View className="bg-white mt-4 p-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-2">Preferences</Text>
-          {Object.entries(profileData.preferences).map(([key, value]) => (
-            <View 
-              key={key}
-              className="flex-row items-center justify-between py-2"
-            >
-              <Text className="text-gray-900 capitalize">
-                {key.replace(/([A-Z])/g, ' $1').trim()}
-              </Text>
-              <Switch
-                value={value}
-                onValueChange={(newValue) => 
-                  setProfileData({
+          <Text className="text-lg font-semibold text-gray-900 mb-2">Travel Preferences</Text>
+          {isEditing ? (
+            <>
+              <View className="mb-4">
+                <Text className="text-gray-600 mb-1">Preferred Language</Text>
+                <TextInput
+                  value={profileData.travel_preferences.preferred_language}
+                  onChangeText={(text) => setProfileData({
                     ...profileData,
-                    preferences: {
-                      ...profileData.preferences,
-                      [key]: newValue,
-                    },
-                  })
-                }
-                disabled={!isEditing}
-              />
-            </View>
-          ))}
+                    travel_preferences: {
+                      ...profileData.travel_preferences,
+                      preferred_language: text
+                    }
+                  })}
+                  className="text-gray-900"
+                />
+              </View>
+              <View>
+                <Text className="text-gray-600 mb-1">Preferred Currency</Text>
+                <TextInput
+                  value={profileData.travel_preferences.preferred_currency}
+                  onChangeText={(text) => setProfileData({
+                    ...profileData,
+                    travel_preferences: {
+                      ...profileData.travel_preferences,
+                      preferred_currency: text
+                    }
+                  })}
+                  className="text-gray-900"
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text className="text-gray-900">
+                Language: {profileData.travel_preferences.preferred_language}
+              </Text>
+              <Text className="text-gray-900 mt-2">
+                Currency: {profileData.travel_preferences.preferred_currency}
+              </Text>
+            </>
+          )}
+        </View>
+
+        {/* Emergency Contact */}
+        <View className="bg-white mt-4 p-4">
+          <Text className="text-lg font-semibold text-gray-900 mb-2">Emergency Contact</Text>
+          {isEditing ? (
+            <>
+              <View className="mb-4">
+                <Text className="text-gray-600 mb-1">Name</Text>
+                <TextInput
+                  value={profileData.emergency_contact.name}
+                  onChangeText={(text) => setProfileData({
+                    ...profileData,
+                    emergency_contact: {
+                      ...profileData.emergency_contact,
+                      name: text
+                    }
+                  })}
+                  className="text-gray-900"
+                />
+              </View>
+              <View className="mb-4">
+                <Text className="text-gray-600 mb-1">Relationship</Text>
+                <TextInput
+                  value={profileData.emergency_contact.relationship}
+                  onChangeText={(text) => setProfileData({
+                    ...profileData,
+                    emergency_contact: {
+                      ...profileData.emergency_contact,
+                      relationship: text
+                    }
+                  })}
+                  className="text-gray-900"
+                />
+              </View>
+              <View>
+                <Text className="text-gray-600 mb-1">Phone</Text>
+                <TextInput
+                  value={profileData.emergency_contact.phone}
+                  onChangeText={(text) => setProfileData({
+                    ...profileData,
+                    emergency_contact: {
+                      ...profileData.emergency_contact,
+                      phone: text
+                    }
+                  })}
+                  className="text-gray-900"
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text className="text-gray-900">
+                {profileData.emergency_contact.name} ({profileData.emergency_contact.relationship})
+              </Text>
+              <Text className="text-gray-900 mt-2">
+                {profileData.emergency_contact.phone}
+              </Text>
+            </>
+          )}
         </View>
 
         {/* Sign Out Button */}

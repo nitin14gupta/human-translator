@@ -64,11 +64,13 @@ def create_app():
     from routes.auth import auth_bp
     from routes.users import users_bp
     from routes.profiles import profiles_bp
+    from routes.translators import translators_bp
     
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(profiles_bp, url_prefix='/api/profiles')
+    app.register_blueprint(translators_bp, url_prefix='/api/translators')
     
     return app
 
