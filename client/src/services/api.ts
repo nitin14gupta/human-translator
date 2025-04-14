@@ -275,4 +275,256 @@ export const setOfflineStatus = (status: boolean) => {
 // Set maintenance status for testing
 export const setMaintenanceStatus = (status: boolean) => {
   isServerMaintenance = status;
+};
+
+// Booking related functions
+export interface Booking {
+  id: string;
+  date: string;
+  formatted_date: string;
+  time: string;
+  formatted_time: string;
+  duration_hours: number;
+  location: string;
+  notes?: string;
+  status: string;
+  amount: number;
+  other_user_id: string;
+  other_user_name: string;
+  other_user_photo?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getBookings = async (status?: string): Promise<Booking[]> => {
+  try {
+    const headers = await createAuthHeaders();
+    const queryParams = status ? `?status=${status}` : '';
+    return await apiFetch(`/api/bookings${queryParams}`, {
+      method: 'GET',
+      headers,
+    });
+  } catch (error) {
+    console.error('Error getting bookings:', error);
+    throw error;
+  }
+};
+
+export const getBookingById = async (bookingId: string): Promise<Booking> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch(`/api/bookings/${bookingId}`, {
+      method: 'GET',
+      headers,
+    });
+  } catch (error) {
+    console.error('Error getting booking details:', error);
+    throw error;
+  }
+};
+
+export interface CreateBookingData {
+  translator_id: number;
+  date: string; // YYYY-MM-DD
+  start_time: string; // HH:MM
+  duration_hours: number;
+  location: string;
+  total_amount: number;
+  notes?: string;
+}
+
+export const createBooking = async (bookingData: CreateBookingData): Promise<Booking> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/bookings', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(bookingData),
+    });
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    throw error;
+  }
+};
+
+export interface UpdateBookingData {
+  action: 'cancel' | 'complete' | 'reschedule';
+  date?: string;
+  start_time?: string;
+  duration_hours?: number;
+  location?: string;
+  notes?: string;
+}
+
+export const updateBooking = async (bookingId: string, updateData: UpdateBookingData): Promise<Booking> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch(`/api/bookings/${bookingId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(updateData),
+    });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    throw error;
+  }
+};
+
+export interface ChatMessage {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  content: string;
+  sender_name: string;
+  sender_is_traveler: boolean;
+  read: boolean;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  name: string;
+  photo_url: string | null;
+  last_message: string;
+  last_message_time: string;
+  unread_count: number;
+  booking_id: string | null;
+  is_online: boolean;
+}
+
+export const getConversations = async (): Promise<Conversation[]> => {
+  try {
+    const response = await apiFetch<{ conversations: Conversation[] }>('/api/chat/conversations');
+    return response.conversations;
+  } catch (error) {
+    console.error('Error getting conversations:', error);
+    return [];
+  }
+};
+
+export const getMessages = async (conversationId: string, page: number = 1, perPage: number = 20): Promise<{ 
+  messages: ChatMessage[],
+  total: number,
+  page: number,
+  pages: number
+}> => {
+  try {
+    const response = await apiFetch<{ 
+      messages: ChatMessage[],
+      total: number,
+      page: number,
+      per_page: number,
+      pages: number
+    }>(`/api/chat/conversations/${conversationId}/messages?page=${page}&per_page=${perPage}`);
+    
+    return {
+      messages: response.messages,
+      total: response.total,
+      page: response.page,
+      pages: response.pages
+    };
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    return {
+      messages: [],
+      total: 0,
+      page: 1,
+      pages: 0
+    };
+  }
+};
+
+export const sendMessage = async (conversationId: string, content: string): Promise<ChatMessage | null> => {
+  try {
+    const response = await apiFetch<{ message: ChatMessage }>(`/api/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ content })
+    });
+    
+    return response.message;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    return null;
+  }
+};
+
+export const markConversationAsRead = async (conversationId: string): Promise<boolean> => {
+  try {
+    await apiFetch(`/api/chat/conversations/${conversationId}/read`, {
+      method: 'POST'
+    });
+    return true;
+  } catch (error) {
+    console.error('Error marking conversation as read:', error);
+    return false;
+  }
+};
+
+export interface PaymentInitiateRequest {
+  booking_id: string;
+  payment_method: string;
+}
+
+export interface PaymentInitiateResponse {
+  payment_id: string;
+  checkout_url?: string;
+  amount: number;
+  currency: string;
+}
+
+export interface PaymentVerifyRequest {
+  payment_id: string;
+  transaction_id: string;
+}
+
+export interface PaymentVerifyResponse {
+  status: 'success' | 'failed';
+  booking_id: string;
+  payment_id: string;
+  amount: number;
+}
+
+export const initiatePayment = async (data: PaymentInitiateRequest): Promise<PaymentInitiateResponse> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/payments/initiate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+  } catch (error) {
+    console.error('Error initiating payment:', error);
+    throw error;
+  }
+};
+
+export const verifyPayment = async (data: PaymentVerifyRequest): Promise<PaymentVerifyResponse> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/payments/verify', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    throw error;
+  }
+};
+
+export const getPaymentHistory = async (): Promise<any[]> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/payments/history', {
+      method: 'GET',
+      headers
+    });
+  } catch (error) {
+    console.error('Error getting payment history:', error);
+    return [];
+  }
 }; 

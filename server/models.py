@@ -387,3 +387,41 @@ class Booking(db.Model):
         self.total_amount = total_amount
         self.notes = notes
         self.status = 'pending'
+
+class ChatMessage(db.Model):
+    __tablename__ = 'chat_messages'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    read_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    # Define relationships
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
+    
+    def __init__(self, sender_id, receiver_id, content):
+        self.sender_id = sender_id
+        self.receiver_id = receiver_id
+        self.content = content
+    
+    def mark_as_read(self):
+        if not self.read_at:
+            self.read_at = datetime.utcnow()
+            db.session.commit()
+    
+    def as_dict(self):
+        sender = User.query.get(self.sender_id)
+        return {
+            'id': self.id,
+            'sender_id': self.sender_id,
+            'receiver_id': self.receiver_id,
+            'content': self.content,
+            'sender_name': sender.name if sender else 'Unknown',
+            'sender_is_traveler': sender.is_traveler if sender else True,
+            'read': self.read_at is not None,
+            'read_at': self.read_at.isoformat() if self.read_at else None,
+            'created_at': self.created_at.isoformat()
+        }
