@@ -249,7 +249,7 @@ export default function BookingsScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         className="bg-blue-600 px-4 py-2 rounded-full"
-                        onPress={() => router.push(`/chat/${booking.id}`)}
+                        onPress={() => router.push(`/(traveler)/${booking.other_user_id}`)}
                       >
                         <Text className="text-white font-medium">Message</Text>
                       </TouchableOpacity>
