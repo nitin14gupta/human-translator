@@ -13,35 +13,34 @@ import {
   Animated,
   Image,
   Pressable,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { getMessages, sendMessage, markConversationAsRead, ChatMessage } from '../../services/api';
+import socketService from '../../services/socketService';
 
 // Define message type
-interface Message {
+interface MessageData {
   id: string;
   text: string;
-  sender: 'user' | 'traveler';
+  sender: 'user' | 'other';
   timestamp: string;
   status?: 'sent' | 'delivered' | 'read';
-  type?: 'text' | 'typing';
   isTranslated?: boolean;
   originalText?: string;
 }
 
-interface Traveler {
+interface TravelerProfile {
   id: string;
   name: string;
-  avatar: string | null;
-  isActive: boolean;
-  lastSeen: string;
-  languages: string[];
-  rating?: number;
-  location?: string;
+  photo_url: string | null;
+  is_online: boolean;
+  languages?: string[];
 }
 
 const TypingIndicator = () => {
@@ -91,241 +90,239 @@ const TypingIndicator = () => {
 
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams();
+  const conversationId = id as string;
   const router = useRouter();
   const { user } = useAuth();
+  const userId = user?.id;
+  
   const [messageText, setMessageText] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
-  const [traveler, setTraveler] = useState<Traveler | null>(null);
+  const [traveler, setTraveler] = useState<TravelerProfile | null>(null);
+  const [messages, setMessages] = useState<MessageData[]>([]);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const flatListRef = useRef<FlatList>(null);
   
   // Animation values
   const actionsHeight = useRef(new Animated.Value(0)).current;
   const inputFocused = useRef(new Animated.Value(0)).current;
 
-  // Mock messages data
-  const [messages, setMessages] = useState<Message[]>([]);
-
-  // Render typing indicator function
-  const renderTypingIndicator = () => {
-    if (isTyping) {
-      return (
-        <View style={styles.messageContainer}>
-          {traveler?.avatar ? (
-            <Image
-              source={{ uri: traveler.avatar }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={styles.avatar}>
-              {traveler && <Text style={styles.avatarText}>{traveler.name[0]}</Text>}
-            </View>
-          )}
-          <View style={styles.messageContent}>
-            <TypingIndicator />
-          </View>
-        </View>
-      );
-    }
-    return null;
-  };
-
-  // Load chat data
+  // Connect to WebSocket
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      // Mock traveler data
-      setTraveler({
-        id: id as string,
-        name: 'John Smith',
-        avatar: null,
-        isActive: true,
-        lastSeen: 'Active now',
-        languages: ['English', 'French'],
-        rating: 4.8,
-        location: 'Paris, France'
-      });
-
-      // Mock messages data
-      setMessages([
-        {
-          id: '1',
-          text: 'Hello! I need your help for my trip to the Louvre tomorrow.',
-          sender: 'traveler',
-          timestamp: '10:30 AM',
-          status: 'read'
-        },
-        {
-          id: '2',
-          text: "Hi John! I'd be happy to help. What time are you planning to visit?",
-          sender: 'user',
-          timestamp: '10:32 AM',
-          status: 'read'
-        },
-        {
-          id: '3',
-          text: 'I was thinking around 9 AM to avoid the crowds. Would that work for you?',
-          sender: 'traveler',
-          timestamp: '10:35 AM',
-          status: 'read'
-        },
-        {
-          id: '4',
-          text: '9 AM works perfectly. I can meet you at the main entrance under the pyramid.',
-          sender: 'user',
-          timestamp: '10:36 AM',
-          status: 'read'
-        },
-        {
-          id: '5',
-          text: 'Great! How will I recognize you?',
-          sender: 'traveler',
-          timestamp: '10:38 AM',
-          status: 'read'
-        },
-        {
-          id: '6',
-          text: "I'll be wearing a blue jacket and holding a sign with your name. Also, I've sent you my photo in my profile.", 
-          sender: 'user',
-          timestamp: '10:40 AM',
-          status: 'read'
-        },
-        {
-          id: '7',
-          text: "Perfect! By the way, how long do you think we'll need for the main highlights of the museum?",
-          sender: 'traveler',
-          timestamp: '10:45 AM',
-          status: 'read'
-        },
-      ]);
-
-      setIsLoading(false);
-      
-      // Simulate traveler typing after 2 seconds
-      setTimeout(() => {
-        setIsTyping(true);
-        
-        // Simulate receiving a message after typing
-        setTimeout(() => {
-          setIsTyping(false);
-          setMessages(prev => [...prev, {
-            id: '8',
-            text: 'Also, do I need to buy tickets in advance or can we get them at the entrance?',
-            sender: 'traveler',
-            timestamp: '10:48 AM',
-            status: 'delivered'
-          }]);
-        }, 3000);
-      }, 2000);
-    }, 1000);
-    
-    // Keyboard listeners for UI adjustments
-    const keyboardWillShow = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
-        Animated.timing(inputFocused, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: false,
-        }).start();
-        // Scroll to bottom when keyboard appears
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+    const connectSocket = async () => {
+      if (user?.id) {
+        const connected = await socketService.initialize(user.id);
+        setSocketConnected(connected);
       }
-    );
-    
-    const keyboardWillHide = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        Animated.timing(inputFocused, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: false,
-        }).start();
-      }
-    );
+    };
+
+    connectSocket();
 
     return () => {
-      keyboardWillShow.remove();
-      keyboardWillHide.remove();
+      socketService.disconnect();
     };
-  }, [id]);
+  }, [user]);
 
-  // Send typing indicator
-  const sendTypingIndicator = () => {
-    if (!isTyping) {
-      setIsTyping(true);
+  // Handle real-time typing status updates
+  useEffect(() => {
+    if (!socketConnected || !userId || !conversationId) return;
+    
+    const handleTypingStatus = (typingUserId: string, isTyping: boolean) => {
+      // Only update typing status if it's from the current conversation partner
+      if (typingUserId === conversationId) {
+        setIsTyping(isTyping);
+      }
+    };
+    
+    const unsubscribe = socketService.onTypingStatusChange(handleTypingStatus);
+    return () => unsubscribe();
+  }, [socketConnected, userId, conversationId]);
+
+  // Handle real-time message updates
+  useEffect(() => {
+    if (!socketConnected || !userId || !conversationId) return;
+    
+    const handleNewMessage = (message: ChatMessage) => {
+      // Only add new messages from the current conversation
+      if ((message.sender_id.toString() === conversationId || message.receiver_id.toString() === conversationId)) {
+        const newMessage: MessageData = {
+          id: message.id.toString(),
+          text: message.content,
+          sender: message.sender_id.toString() === userId?.toString() ? 'user' : 'other',
+          timestamp: message.created_at,
+          status: message.read_at ? 'read' : 'delivered'
+        };
+        
+        setMessages(prevMessages => {
+          // Check if message already exists
+          if (prevMessages.some(msg => msg.id === newMessage.id)) {
+            return prevMessages;
+          }
+          return [...prevMessages, newMessage];
+        });
+        
+        // Mark message as read if it's from the other person
+        if (message.sender_id.toString() === conversationId) {
+          markConversationAsRead(conversationId);
+        }
+      }
+    };
+    
+    const unsubscribe = socketService.onMessage(handleNewMessage);
+    return () => unsubscribe();
+  }, [socketConnected, userId, conversationId]);
+
+  // Fetch chat data
+  useEffect(() => {
+    const fetchChatData = async () => {
+      if (!userId || !conversationId) return;
       
-      // Add typing indicator message temporarily
-      const typingMessage: Message = {
-        id: 'typing',
-        text: '',
-        sender: 'traveler',
-        timestamp: new Date().toISOString(),
-        type: 'typing'
-      };
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Fetch messages from API
+        const response = await getMessages(conversationId);
+        
+        // Transform messages to our format
+        const formattedMessages: MessageData[] = response.messages.map(msg => ({
+          id: msg.id.toString(),
+          text: msg.content,
+          sender: msg.sender_id.toString() === userId.toString() ? 'user' : 'other',
+          timestamp: msg.created_at,
+          status: msg.read_at ? 'read' : 'delivered'
+        }));
+        
+        setMessages(formattedMessages);
+        setHasMoreMessages(response.total > formattedMessages.length);
+        setCurrentPage(1);
+        
+        // Mark conversation as read
+        await markConversationAsRead(conversationId);
+        
+        // Set traveler info
+        // In a real implementation, you would get this from API
+        setTraveler({
+          id: conversationId,
+          name: "Traveler",
+          photo_url: null,
+          is_online: false
+        });
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching chat data:', error);
+        setError('Failed to load conversation. Please try again.');
+        setIsLoading(false);
+      }
+    };
+    
+    fetchChatData();
+  }, [userId, conversationId]);
+
+  // Load more messages
+  const loadMoreMessages = async () => {
+    if (!hasMoreMessages || isLoadingMore || !conversationId) return;
+    
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
       
-      const newMessages = [...messages, typingMessage];
-      setMessages(newMessages);
+      const response = await getMessages(conversationId, nextPage);
       
-      // Remove typing indicator after some time
-      setTimeout(() => {
-        setMessages(messages => messages.filter(m => m.id !== 'typing'));
-        setIsTyping(false);
-      }, 3000);
+      // Transform and add messages
+      const olderMessages: MessageData[] = response.messages.map(msg => ({
+        id: msg.id.toString(),
+        text: msg.content,
+        sender: msg.sender_id.toString() === userId?.toString() ? 'user' : 'other',
+        timestamp: msg.created_at,
+        status: msg.read_at ? 'read' : 'delivered'
+      }));
+      
+      setMessages(prevMessages => [...olderMessages, ...prevMessages]);
+      setHasMoreMessages(response.total > (olderMessages.length + messages.length));
+      setCurrentPage(nextPage);
+      setIsLoadingMore(false);
+    } catch (error) {
+      console.error('Error loading more messages:', error);
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Send typing indicators to the server
+  const handleTextChange = (text: string) => {
+    setMessageText(text);
+    
+    if (text.length > 0 && socketConnected && conversationId) {
+      // Send typing indicator
+      socketService.sendTypingStatus(true, conversationId);
+      
+      // Stop typing indicator after 2 seconds of inactivity
+      const debounce = setTimeout(() => {
+        socketService.sendTypingStatus(false, conversationId);
+      }, 2000);
+      
+      return () => clearTimeout(debounce);
     }
   };
 
   // Handle sending message
-  const handleSendMessage = () => {
-    if (messageText.trim() === '') return;
+  const handleSendMessage = async () => {
+    if (messageText.trim() === '' || !conversationId) return;
     
-    // Add new message to the list
-    const newMessage: Message = {
-      id: (messages.length + 1).toString(),
-      text: messageText,
-      sender: 'user',
-      timestamp: new Date().toISOString(),
-      status: 'sent'
-    };
-    
-    setMessages([...messages, newMessage]);
-    setMessageText('');
-    
-    // Simulate message being delivered and read
-    setTimeout(() => {
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === newMessage.id ? {...msg, status: 'delivered'} : msg
-        )
-      );
-    }, 1000);
-    
-    setTimeout(() => {
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === newMessage.id ? {...msg, status: 'read'} : msg
-        )
-      );
+    try {
+      // Add optimistic message to UI first
+      const optimisticMessage: MessageData = {
+        id: `temp-${Date.now()}`,
+        text: messageText,
+        sender: 'user',
+        timestamp: new Date().toISOString(),
+        status: 'sent'
+      };
       
-      // Simulate traveler typing
-      sendTypingIndicator();
+      setMessages(prev => [...prev, optimisticMessage]);
+      setMessageText('');
       
-      // Simulate response after typing
-      setTimeout(() => {
-        const response: Message = {
-          id: (messages.length + 2).toString(),
-          text: "Sure, I'll meet you at the train station at 2 PM. Looking forward to our tour!",
-          sender: 'traveler',
-          timestamp: new Date().toISOString()
-        };
+      // Stop typing indicator
+      socketService.sendTypingStatus(false, conversationId);
+      
+      // Scroll to bottom
+      flatListRef.current?.scrollToEnd({ animated: true });
+      
+      // Actually send the message
+      const sentMessage = await sendMessage(conversationId, messageText);
+      
+      if (sentMessage) {
+        // Replace optimistic message with actual message
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === optimisticMessage.id ? {
+              id: sentMessage.id.toString(),
+              text: sentMessage.content,
+              sender: 'user',
+              timestamp: sentMessage.created_at,
+              status: 'delivered'
+            } : msg
+          )
+        );
+      } else {
+        // Show error if message failed to send
+        Alert.alert('Error', 'Failed to send message. Please try again.');
         
-        setMessages(prev => [...prev.filter(m => m.id !== 'typing'), response]);
-      }, 3500);
-    }, 2000);
+        // Remove optimistic message
+        setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    }
   };
 
   // Toggle actions menu
@@ -345,28 +342,17 @@ export default function ChatDetailScreen() {
   };
 
   // Render message item
-  const renderMessage = ({ item }: { item: Message }) => {
+  const renderMessage = ({ item }: { item: MessageData }) => {
     const isUser = item.sender === 'user';
-    const showTimestamp = item.id === '1' || 
-      new Date(item.timestamp).getHours() !== new Date(messages[messages.indexOf(item) - 1].timestamp).getHours();
+    
+    // Determine if we should show timestamp
+    const msgIndex = messages.findIndex(m => m.id === item.id);
+    const showTimestamp = msgIndex === 0 || 
+      new Date(item.timestamp).getHours() !== new Date(messages[msgIndex - 1]?.timestamp || new Date()).getHours();
     
     // Determine if we should show the status
-    const showStatus = isUser && item.id === messages[messages.length - 1].id;
+    const showStatus = isUser && item.id === messages[messages.length - 1]?.id;
     
-    if (item.type === 'typing') {
-      return (
-        <View style={styles.messageContainer}>
-          <Image
-            source={{ uri: traveler?.avatar || '' }}
-            style={styles.avatar}
-          />
-          <View style={styles.messageContent}>
-            <TypingIndicator />
-          </View>
-        </View>
-      );
-    }
-
     return (
       <View style={[styles.messageWrapper, isUser ? styles.userMessageWrapper : styles.travelerMessageWrapper]}>
         {showTimestamp && (
@@ -448,19 +434,19 @@ export default function ChatDetailScreen() {
               <View style={styles.travelerInfoContent}>
                 <View style={styles.avatarWrapper}>
                   <View style={styles.avatar}>
-                    {traveler.avatar ? (
-                      <Image source={{ uri: traveler.avatar }} style={styles.avatarImage} />
+                    {traveler.photo_url ? (
+                      <Image source={{ uri: traveler.photo_url }} style={styles.avatarImage} />
                     ) : (
                       <Text style={styles.avatarText}>{traveler.name[0]}</Text>
                     )}
                   </View>
-                  {traveler.isActive && <View style={styles.activeIndicator} />}
+                  {traveler.is_online && <View style={styles.activeIndicator} />}
                 </View>
                 
                 <View style={styles.travelerTextInfo}>
                   <Text style={styles.travelerName} numberOfLines={1}>{traveler.name}</Text>
                   <Text style={styles.travelerStatus}>
-                    {traveler.isActive ? 'Active now' : traveler.lastSeen}
+                    {traveler.is_online ? 'Active now' : 'Last seen recently'}
                   </Text>
                 </View>
               </View>
@@ -490,7 +476,11 @@ export default function ChatDetailScreen() {
           showsVerticalScrollIndicator={false}
           ListFooterComponent={() => (
             <>
-              {renderTypingIndicator()}
+              {isTyping && (
+                <View style={styles.typingContainer}>
+                  <TypingIndicator />
+                </View>
+              )}
               <View style={{ height: 20 }} />
             </>
           )}
@@ -562,7 +552,7 @@ export default function ChatDetailScreen() {
                   style={styles.textInput}
                   placeholder="Type a message..."
                   value={messageText}
-                  onChangeText={setMessageText}
+                  onChangeText={handleTextChange}
                   multiline
                   maxLength={1000}
                   onFocus={() => {

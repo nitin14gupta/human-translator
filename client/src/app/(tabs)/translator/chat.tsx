@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Text,
@@ -11,26 +11,16 @@ import {
   Animated,
   Platform,
   StatusBar,
-  RefreshControl
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { useAuth } from "../../../context/AuthContext";
-
-// Define proper types for our data
-interface ChatData {
-  id: string;
-  travelerName: string;
-  lastMessage: string;
-  unreadCount: number;
-  time: string;
-  avatar: string | null;
-  isActive: boolean;
-  languages: string[];
-  lastSeen?: string;
-}
+import { getConversations, Conversation, markConversationAsRead } from "../../../services/api";
+import socketService from "../../../services/socketService";
 
 export default function TranslatorChatScreen() {
   const { t } = useTranslation();
@@ -38,67 +28,162 @@ export default function TranslatorChatScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("all");
   const [scrollY] = useState(new Animated.Value(0));
-  
-  // Mock data for chats
-  const [chats, setChats] = useState<ChatData[]>([
-    {
-      id: "1",
-      travelerName: "John Smith",
-      lastMessage: "What time should we meet tomorrow?",
-      unreadCount: 2,
-      time: "10:45 AM",
-      avatar: null,
-      isActive: true,
-      languages: ["English", "French"],
-      lastSeen: "Just now"
-    },
-    {
-      id: "2",
-      travelerName: "Maria Rodriguez",
-      lastMessage: "Thank you for your help yesterday!",
-      unreadCount: 0,
-      time: "Yesterday",
-      avatar: null,
-      isActive: false,
-      languages: ["Spanish", "French"],
-      lastSeen: "2 hours ago"
-    },
-    {
-      id: "3",
-      travelerName: "Michael Chen",
-      lastMessage: "I'm at the entrance of the museum",
-      unreadCount: 0,
-      time: "Yesterday",
-      avatar: null,
-      isActive: true,
-      languages: ["Chinese", "French", "English"],
-      lastSeen: "5 minutes ago"
-    },
-    {
-      id: "4",
-      travelerName: "Sarah Johnson",
-      lastMessage: "Can you recommend a good restaurant?",
-      unreadCount: 0,
-      time: "Monday",
-      avatar: null,
-      isActive: false,
-      languages: ["English", "French"],
-      lastSeen: "3 days ago"
-    },
-    {
-      id: "5",
-      travelerName: "Akira Tanaka",
-      lastMessage: "I'll be waiting at the hotel lobby",
-      unreadCount: 1,
-      time: "11:22 AM",
-      avatar: null,
-      isActive: true,
-      languages: ["Japanese", "English"],
-      lastSeen: "Just now"
+  const [chats, setChats] = useState<Conversation[]>([]);
+  const [filteredChats, setFilteredChats] = useState<Conversation[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  // Connect to WebSocket
+  useEffect(() => {
+    const connectSocket = async () => {
+      if (user?.id) {
+        const connected = await socketService.initialize(user.id);
+        setSocketConnected(connected);
+      }
+    };
+
+    connectSocket();
+
+    return () => {
+      // Disconnect socket when component unmounts
+      socketService.disconnect();
+    };
+  }, [user]);
+
+  // Handle online status updates
+  useEffect(() => {
+    if (!socketConnected || !user?.id) return;
+    
+    const handleOnlineStatus = (userId: string, isOnline: boolean) => {
+      setChats((prevChats) => 
+        prevChats.map((chat) => 
+          chat.id === userId ? { ...chat, is_online: isOnline } : chat
+        )
+      );
+    };
+    
+    const unsubscribe = socketService.onOnlineStatusChange(handleOnlineStatus);
+    return () => unsubscribe();
+  }, [socketConnected, user]);
+
+  // Handle new messages
+  useEffect(() => {
+    if (!socketConnected || !user?.id) return;
+    
+    const handleNewMessage = (message: any) => {
+      const isIncoming = message.sender_id !== user.id;
+      
+      if (isIncoming) {
+        // Update the chat list with the new message
+        setChats((prevChats) => {
+          const conversationId = message.sender_id;
+          const updatedChats = prevChats.map((chat) => {
+            if (chat.id === conversationId) {
+              return {
+                ...chat,
+                last_message: message.content,
+                last_message_time: message.created_at,
+                unread_count: chat.unread_count + 1
+              };
+            }
+            return chat;
+          });
+          
+          return updatedChats;
+        });
+      }
+    };
+    
+    const unsubscribe = socketService.onMessage(handleNewMessage);
+    return () => unsubscribe();
+  }, [socketConnected, user]);
+
+  // Fetch conversations from API
+  const fetchConversations = useCallback(async () => {
+    try {
+      setError(null);
+      const conversations = await getConversations();
+      setChats(conversations);
+      
+      // Apply filters
+      filterChats(conversations, searchQuery, activeFilter);
+      
+      return conversations;
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      setError("Failed to load conversations. Please try again.");
+      return [];
     }
-  ]);
+  }, [searchQuery, activeFilter]);
+
+  // Initial load
+  useEffect(() => {
+    const loadChats = async () => {
+      setLoading(true);
+      await fetchConversations();
+      setLoading(false);
+    };
+    
+    loadChats();
+  }, [fetchConversations]);
+
+  // Filter function
+  const filterChats = (chatList: Conversation[], query: string, filter: string) => {
+    // Filter by search query
+    let filtered = chatList;
+    
+    if (query.trim() !== "") {
+      filtered = filtered.filter(chat => 
+        chat.name.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+    
+    // Apply status filter
+    if (filter === "active") {
+      filtered = filtered.filter(chat => chat.is_online);
+    } else if (filter === "unread") {
+      filtered = filtered.filter(chat => chat.unread_count > 0);
+    }
+    // The "archived" filter would be implemented here if needed
+    
+    setFilteredChats(filtered);
+  };
+
+  // Update filters when search query or active filter changes
+  useEffect(() => {
+    filterChats(chats, searchQuery, activeFilter);
+  }, [searchQuery, activeFilter, chats]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchConversations();
+    setRefreshing(false);
+  };
+
+  // Handle chat item press
+  const handleChatPress = async (chatId: string) => {
+    try {
+      // Mark conversation as read
+      if (chatId) {
+        await markConversationAsRead(chatId);
+        
+        // Update unread count locally
+        setChats(prevChats => 
+          prevChats.map(chat => 
+            chat.id === chatId ? { ...chat, unread_count: 0 } : chat
+          )
+        );
+      }
+      
+      // Navigate to chat detail view
+      router.push(`/(translator)/${chatId}`);
+    } catch (error) {
+      console.error("Error marking conversation as read:", error);
+    }
+  };
 
   // Animation value for header
   const headerOpacity = scrollY.interpolate({
@@ -107,46 +192,8 @@ export default function TranslatorChatScreen() {
     extrapolate: 'clamp',
   });
 
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    // Simulate a network request
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
-  }, []);
-
-  // Filter chats based on search query and active filter
-  const filteredChats = chats.filter(chat => {
-    // Text search filter
-    const matchesSearch = 
-      searchQuery === "" ||
-      chat.travelerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Status filter
-    const matchesFilter = 
-      activeFilter === "all" ||
-      (activeFilter === "active" && chat.isActive) ||
-      (activeFilter === "unread" && chat.unreadCount > 0) ||
-      (activeFilter === "archived" && false); // No archived chats in mock data
-    
-    return matchesSearch && matchesFilter;
-  });
-
-  // Handle chat item press
-  const handleChatPress = (chatId: string) => {
-    // Mark as read in a real app
-    const updatedChats = chats.map(chat => 
-      chat.id === chatId ? { ...chat, unreadCount: 0 } : chat
-    );
-    setChats(updatedChats);
-    
-    // Navigate to chat detail view
-    router.push(`/(translator)/${chatId}`);
-  };
-
   // Render chat item
-  const renderChatItem = ({ item }: { item: ChatData }) => (
+  const renderChatItem = ({ item }: { item: Conversation }) => (
     <Animated.View 
       style={{
         opacity: 1,
@@ -156,64 +203,67 @@ export default function TranslatorChatScreen() {
       <TouchableOpacity 
         style={[
           styles.chatItem,
-          item.unreadCount > 0 && styles.unreadChatItem
+          item.unread_count > 0 && styles.unreadChatItem
         ]}
         onPress={() => handleChatPress(item.id)}
         activeOpacity={0.7}
       >
         {/* Avatar with status indicator */}
         <View style={[styles.avatarContainer]}>
-          <View style={[styles.avatar, item.isActive && styles.activeAvatar]}>
-            {item.avatar ? (
-              <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
+          <View style={[styles.avatar, item.is_online && styles.activeAvatar]}>
+            {item.photo_url ? (
+              <Image source={{ uri: item.photo_url }} style={styles.avatarImage} />
             ) : (
-              <Text style={styles.avatarText}>{item.travelerName[0]}</Text>
+              <Text style={styles.avatarText}>{item.name[0]}</Text>
             )}
           </View>
-          {item.isActive && <View style={styles.activeIndicator} />}
+          {item.is_online && <View style={styles.activeIndicator} />}
         </View>
         
         {/* Chat details */}
         <View style={styles.chatDetails}>
           <View style={styles.chatHeader}>
             <Text style={styles.travelerName} numberOfLines={1}>
-              {item.travelerName}
+              {item.name}
             </Text>
-            <Text style={styles.timeText}>{item.time}</Text>
+            <Text style={styles.timeText}>{formatTimeAgo(item.last_message_time)}</Text>
           </View>
           
           <View style={styles.messageContainer}>
             <Text 
               style={[
                 styles.messageText, 
-                item.unreadCount > 0 && styles.unreadMessage
+                item.unread_count > 0 && styles.unreadMessage
               ]}
               numberOfLines={1}
             >
-              {item.lastMessage}
+              {item.last_message}
             </Text>
             
-            {item.unreadCount > 0 && (
+            {item.unread_count > 0 && (
               <View style={styles.unreadBadge}>
-                <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+                <Text style={styles.unreadCount}>{item.unread_count}</Text>
               </View>
             )}
           </View>
           
           <View style={styles.languagesContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <MaterialCommunityIcons name="translate" size={12} color="#888" style={{ marginRight: 3 }} />
-              {item.languages.map((language, index) => (
-                <Text key={index} style={styles.languageText}>
-                  {language}{index < item.languages.length - 1 ? " • " : ""}
-                </Text>
-              ))}
-            </View>
+            {item.booking_id && (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="calendar-outline" size={12} color="#888" style={{ marginRight: 3 }} />
+                <Text style={styles.languageText}>Has Booking</Text>
+              </View>
+            )}
             
-            {item.lastSeen && (
+            {item.is_online ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                <Ionicons name="ellipse" size={8} color="#4CAF50" style={{ marginRight: 3 }} />
+                <Text style={styles.lastSeenText}>Online</Text>
+              </View>
+            ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
                 <Ionicons name="time-outline" size={12} color="#888" style={{ marginRight: 3 }} />
-                <Text style={styles.lastSeenText}>{item.lastSeen}</Text>
+                <Text style={styles.lastSeenText}>Offline</Text>
               </View>
             )}
           </View>
@@ -221,6 +271,31 @@ export default function TranslatorChatScreen() {
       </TouchableOpacity>
     </Animated.View>
   );
+
+  // Helper function to format time
+  const formatTimeAgo = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.round(diffMs / 1000);
+    const diffMin = Math.round(diffSec / 60);
+    const diffHour = Math.round(diffMin / 60);
+    const diffDay = Math.round(diffHour / 24);
+
+    if (diffSec < 60) {
+      return 'Just now';
+    } else if (diffMin < 60) {
+      return `${diffMin}m ago`;
+    } else if (diffHour < 24) {
+      return `${diffHour}h ago`;
+    } else if (diffDay === 1) {
+      return 'Yesterday';
+    } else if (diffDay < 7) {
+      return `${diffDay}d ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
 
   // Render empty list
   const renderEmptyList = () => (
@@ -233,8 +308,11 @@ export default function TranslatorChatScreen() {
         Your conversations with travelers will appear here. Send a message to get started.
       </Text>
       
-      <TouchableOpacity style={styles.emptyButton}>
-        <Text style={styles.emptyButtonText}>Find Travelers</Text>
+      <TouchableOpacity 
+        style={styles.emptyButton}
+        onPress={() => router.push('/(tabs)/translator/requests')}
+      >
+        <Text style={styles.emptyButtonText}>View Requests</Text>
       </TouchableOpacity>
     </View>
   );
@@ -302,27 +380,44 @@ export default function TranslatorChatScreen() {
         ))}
       </View>
       
-      {/* Chat List */}
-      <Animated.FlatList
-        data={filteredChats}
-        renderItem={renderChatItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={renderEmptyList}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh}
-            tintColor="#0066CC"
-            colors={["#0066CC"]}
-          />
-        }
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* Loading State */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0066CC" />
+          <Text style={styles.loadingText}>Loading conversations...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={60} color="#ef4444" />
+          <Text style={styles.errorTitle}>Error Loading Conversations</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        /* Chat List */
+        <Animated.FlatList
+          data={filteredChats}
+          renderItem={renderChatItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={renderEmptyList}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor="#0066CC"
+              colors={["#0066CC"]}
+            />
+          }
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       
       {/* Quick Actions */}
       <View style={styles.quickActionsContainer}>
@@ -340,11 +435,14 @@ export default function TranslatorChatScreen() {
                 <Text style={styles.quickActionText}>Templates</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.quickActionButton}>
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => router.push('/(tabs)/translator/requests')}
+              >
                 <View style={styles.quickActionIcon}>
-                  <Ionicons name="alert-circle" size={20} color="#0066CC" />
+                  <Ionicons name="calendar" size={20} color="#0066CC" />
                 </View>
-                <Text style={styles.quickActionText}>Support</Text>
+                <Text style={styles.quickActionText}>Requests</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.quickActionButton}>
@@ -447,7 +545,7 @@ const styles = StyleSheet.create({
   listContainer: {
     flexGrow: 1,
     paddingHorizontal: 15,
-    paddingBottom: 50,
+    paddingBottom: 80,
   },
   chatItem: {
     flexDirection: "row",
@@ -661,5 +759,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#555",
     fontWeight: "500",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  errorMessage: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#0066CC',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 }); 
