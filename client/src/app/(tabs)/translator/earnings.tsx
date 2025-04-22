@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,76 +7,146 @@ import {
   RefreshControl,
   Platform,
   Alert,
+  ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import { StatusBar } from "expo-status-bar";
-
-interface Transaction {
-  id: string;
-  travelerName: string;
-  date: string;
-  amount: number;
-  status: "completed" | "pending";
-  type: "earning" | "payout";
-}
+import { getEarningsSummary, getEarningsTransactions, withdrawEarnings, Transaction, EarningsSummary } from "../../../services/api";
 
 export default function EarningsScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "payouts">("overview");
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [withdrawalInProgress, setWithdrawalInProgress] = useState(false);
 
-  // Mock data for earnings chart
+  // State for holding API data
+  const [summary, setSummary] = useState<EarningsSummary>({
+    today_earnings: 0,
+    total_earnings: 0,
+    pending_earnings: 0,
+    available_balance: 0,
+    total_payouts: 0,
+    weekly_earnings: [0, 0, 0, 0, 0, 0, 0],
+    weekly_labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  // Fetch earnings data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Load all data (summary and transactions)
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Fetch summary
+      const summaryData = await getEarningsSummary();
+      setSummary(summaryData);
+
+      // Fetch all transactions
+      const transactionsData = await getEarningsTransactions();
+      setTransactions(transactionsData);
+    } catch (error) {
+      console.error('Error loading earnings data:', error);
+      Alert.alert('Error', 'Failed to load earnings data. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Fetch transactions only for a specific type
+  const loadTransactions = async (type: 'earnings' | 'payouts' | 'all') => {
+    try {
+      const data = await getEarningsTransactions(type);
+      setTransactions(data);
+    } catch (error) {
+      console.error(`Error loading ${type} transactions:`, error);
+      Alert.alert('Error', `Failed to load ${type}. Please try again.`);
+    }
+  };
+
+  // Refresh data
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+  };
+
+  // Handle tab change
+  const handleTabChange = async (tab: "overview" | "transactions" | "payouts") => {
+    setActiveTab(tab);
+
+    // Load appropriate transactions for the selected tab
+    if (tab === "transactions") {
+      await loadTransactions('earnings');
+    } else if (tab === "payouts") {
+      await loadTransactions('payouts');
+    }
+  };
+
+  // Handle withdraw button press
+  const handleWithdraw = () => {
+    setWithdrawalAmount('');
+    setShowWithdrawalModal(true);
+  };
+
+  // Process withdrawal
+  const processWithdrawal = async () => {
+    // Validate amount
+    const amount = parseFloat(withdrawalAmount);
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount greater than zero.');
+      return;
+    }
+
+    if (amount > summary.available_balance) {
+      Alert.alert('Insufficient Balance', 'The withdrawal amount exceeds your available balance.');
+      return;
+    }
+
+    setWithdrawalInProgress(true);
+    try {
+      // Process withdrawal
+      const response = await withdrawEarnings({
+        amount,
+        payment_method: 'bank_transfer' // Default payment method
+      });
+
+      // Hide modal and reload data
+      setShowWithdrawalModal(false);
+
+      // Show success message
+      Alert.alert(
+        'Withdrawal Successful',
+        `€${amount} has been sent to your bank account. It may take 1-3 business days to appear in your account.`,
+        [
+          { text: 'OK', onPress: loadData }
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Withdrawal Failed', error.message || 'An error occurred processing your withdrawal');
+    } finally {
+      setWithdrawalInProgress(false);
+    }
+  };
+
+  // Format weekly data for chart
   const chartData = {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    labels: summary.weekly_labels,
     datasets: [{
-      data: [65, 85, 110, 75, 95, 120, 80],
+      data: summary.weekly_earnings,
     }],
   };
 
-  // Mock data for transactions
-  const transactions: Transaction[] = [
-    {
-      id: "1",
-      travelerName: "John Smith",
-      date: "Today, 14:00",
-      amount: 120,
-      status: "completed",
-      type: "earning",
-    },
-    {
-      id: "2",
-      travelerName: "Maria Garcia",
-      date: "Yesterday, 10:00",
-      amount: 90,
-      status: "completed",
-      type: "earning",
-    },
-    {
-      id: "3",
-      travelerName: "Bank Transfer",
-      date: "Jun 20, 2024",
-      amount: 450,
-      status: "completed",
-      type: "payout",
-    },
-    {
-      id: "4",
-      travelerName: "David Chen",
-      date: "Jun 19, 2024",
-      amount: 100,
-      status: "pending",
-      type: "earning",
-    },
-  ];
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    // Simulate data refresh
-    setTimeout(() => setRefreshing(false), 1500);
-  };
-
+  // Filter transactions based on active tab
   const filteredTransactions = transactions.filter(transaction => {
     switch (activeTab) {
       case "transactions":
@@ -88,22 +158,19 @@ export default function EarningsScreen() {
     }
   });
 
-  const totalEarnings = transactions
-    .filter(t => t.type === "earning" && t.status === "completed")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const pendingEarnings = transactions
-    .filter(t => t.type === "earning" && t.status === "pending")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalPayouts = transactions
-    .filter(t => t.type === "payout" && t.status === "completed")
-    .reduce((sum, t) => sum + t.amount, 0);
+  if (loading && !refreshing) {
+    return (
+      <View className="flex-1 bg-gray-50 justify-center items-center">
+        <ActivityIndicator size="large" color="#1a73e8" />
+        <Text className="text-gray-600 mt-4">Loading earnings data...</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
-      
+
       {/* Header */}
       <View className="bg-white pt-12 pb-4 px-4">
         <Text className="text-2xl font-bold text-gray-900">Earnings</Text>
@@ -114,11 +181,12 @@ export default function EarningsScreen() {
       <View className="bg-white px-4 py-6 border-b border-gray-200">
         <Text className="text-gray-600 mb-1">Available Balance</Text>
         <Text className="text-3xl font-bold text-gray-900">
-          €{totalEarnings - totalPayouts}
+          €{summary.available_balance.toFixed(2)}
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           className="bg-blue-600 px-4 py-2 rounded-full mt-4 self-start"
-          onPress={() => Alert.alert("Withdraw", "Withdrawal feature not implemented")}
+          onPress={handleWithdraw}
+          disabled={summary.available_balance <= 0}
         >
           <Text className="text-white font-medium">Withdraw Funds</Text>
         </TouchableOpacity>
@@ -139,7 +207,7 @@ export default function EarningsScreen() {
               </View>
               <Text className="text-gray-600 ml-2">Total Earned</Text>
             </View>
-            <Text className="text-2xl font-bold text-gray-900">€{totalEarnings}</Text>
+            <Text className="text-2xl font-bold text-gray-900">€{summary.total_earnings.toFixed(2)}</Text>
           </View>
 
           <View className="flex-1 bg-white rounded-2xl p-4 ml-2 shadow-sm">
@@ -149,7 +217,7 @@ export default function EarningsScreen() {
               </View>
               <Text className="text-gray-600 ml-2">Pending</Text>
             </View>
-            <Text className="text-2xl font-bold text-gray-900">€{pendingEarnings}</Text>
+            <Text className="text-2xl font-bold text-gray-900">€{summary.pending_earnings.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -158,19 +226,17 @@ export default function EarningsScreen() {
           {(["overview", "transactions", "payouts"] as const).map((tab) => (
             <TouchableOpacity
               key={tab}
-              className={`flex-1 py-4 ${
-                activeTab === tab
-                  ? "border-b-2 border-blue-600"
-                  : ""
-              }`}
-              onPress={() => setActiveTab(tab)}
+              className={`flex-1 py-4 ${activeTab === tab
+                ? "border-b-2 border-blue-600"
+                : ""
+                }`}
+              onPress={() => handleTabChange(tab)}
             >
               <Text
-                className={`text-center font-medium ${
-                  activeTab === tab
-                    ? "text-blue-600"
-                    : "text-gray-600"
-                }`}
+                className={`text-center font-medium ${activeTab === tab
+                  ? "text-blue-600"
+                  : "text-gray-600"
+                  }`}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </Text>
@@ -230,10 +296,9 @@ export default function EarningsScreen() {
                     </Text>
                   </View>
                   <View>
-                    <Text className={`text-lg font-bold ${
-                      transaction.type === "payout" ? "text-red-600" : "text-green-600"
-                    }`}>
-                      {transaction.type === "payout" ? "-" : "+"}€{transaction.amount}
+                    <Text className={`text-lg font-bold ${transaction.type === "payout" ? "text-red-600" : "text-green-600"
+                      }`}>
+                      {transaction.type === "payout" ? "-" : "+"}€{transaction.amount.toFixed(2)}
                     </Text>
                     {transaction.status === "pending" && (
                       <View className="bg-yellow-100 rounded-full px-2 py-1 mt-1">
@@ -248,7 +313,7 @@ export default function EarningsScreen() {
             {filteredTransactions.length === 0 && (
               <View className="items-center justify-center py-12">
                 <View className="w-16 h-16 rounded-full bg-blue-50 items-center justify-center mb-4">
-                  <Ionicons 
+                  <Ionicons
                     name={activeTab === "transactions" ? "wallet-outline" : "card-outline"}
                     size={32}
                     color="#1a73e8"
@@ -267,6 +332,49 @@ export default function EarningsScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Withdrawal Modal */}
+      {showWithdrawalModal && (
+        <View className="absolute inset-0 bg-black/50 items-center justify-center p-4">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <Text className="text-xl font-bold text-gray-900 mb-4">Withdraw Funds</Text>
+
+            <Text className="text-gray-600 mb-2">Available Balance: €{summary.available_balance.toFixed(2)}</Text>
+
+            <View className="border border-gray-200 rounded-lg mb-4">
+              <TextInput
+                value={withdrawalAmount}
+                onChangeText={setWithdrawalAmount}
+                placeholder="Enter amount"
+                keyboardType="decimal-pad"
+                className="p-3 text-gray-900"
+              />
+            </View>
+
+            <View className="flex-row">
+              <TouchableOpacity
+                className="flex-1 bg-gray-100 py-3 rounded-lg mr-2"
+                onPress={() => setShowWithdrawalModal(false)}
+                disabled={withdrawalInProgress}
+              >
+                <Text className="text-gray-700 text-center font-medium">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="flex-1 bg-blue-600 py-3 rounded-lg ml-2"
+                onPress={processWithdrawal}
+                disabled={!withdrawalAmount || withdrawalInProgress}
+              >
+                {withdrawalInProgress ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-white text-center font-medium">Withdraw</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }

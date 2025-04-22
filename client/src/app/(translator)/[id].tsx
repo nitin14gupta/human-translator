@@ -94,7 +94,7 @@ export default function ChatDetailScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const userId = user?.id;
-  
+
   const [messageText, setMessageText] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -107,9 +107,9 @@ export default function ChatDetailScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const flatListRef = useRef<FlatList>(null);
-  
+
   // Animation values
   const actionsHeight = useRef(new Animated.Value(0)).current;
   const inputFocused = useRef(new Animated.Value(0)).current;
@@ -133,14 +133,14 @@ export default function ChatDetailScreen() {
   // Handle real-time typing status updates
   useEffect(() => {
     if (!socketConnected || !userId || !conversationId) return;
-    
+
     const handleTypingStatus = (typingUserId: string, isTyping: boolean) => {
       // Only update typing status if it's from the current conversation partner
       if (typingUserId === conversationId) {
         setIsTyping(isTyping);
       }
     };
-    
+
     const unsubscribe = socketService.onTypingStatusChange(handleTypingStatus);
     return () => unsubscribe();
   }, [socketConnected, userId, conversationId]);
@@ -148,7 +148,7 @@ export default function ChatDetailScreen() {
   // Handle real-time message updates
   useEffect(() => {
     if (!socketConnected || !userId || !conversationId) return;
-    
+
     const handleNewMessage = (message: ChatMessage) => {
       // Only add new messages from the current conversation
       if ((message.sender_id.toString() === conversationId || message.receiver_id.toString() === conversationId)) {
@@ -159,7 +159,7 @@ export default function ChatDetailScreen() {
           timestamp: message.created_at,
           status: message.read_at ? 'read' : 'delivered'
         };
-        
+
         setMessages(prevMessages => {
           // Check if message already exists
           if (prevMessages.some(msg => msg.id === newMessage.id)) {
@@ -167,14 +167,14 @@ export default function ChatDetailScreen() {
           }
           return [...prevMessages, newMessage];
         });
-        
+
         // Mark message as read if it's from the other person
         if (message.sender_id.toString() === conversationId) {
           markConversationAsRead(conversationId);
         }
       }
     };
-    
+
     const unsubscribe = socketService.onMessage(handleNewMessage);
     return () => unsubscribe();
   }, [socketConnected, userId, conversationId]);
@@ -183,14 +183,14 @@ export default function ChatDetailScreen() {
   useEffect(() => {
     const fetchChatData = async () => {
       if (!userId || !conversationId) return;
-      
+
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // Fetch messages from API
         const response = await getMessages(conversationId);
-        
+
         // Transform messages to our format
         const formattedMessages: MessageData[] = response.messages.map(msg => ({
           id: msg.id.toString(),
@@ -199,14 +199,14 @@ export default function ChatDetailScreen() {
           timestamp: msg.created_at,
           status: msg.read_at ? 'read' : 'delivered'
         }));
-        
+
         setMessages(formattedMessages);
         setHasMoreMessages(response.total > formattedMessages.length);
         setCurrentPage(1);
-        
+
         // Mark conversation as read
         await markConversationAsRead(conversationId);
-        
+
         // Set traveler info
         // In a real implementation, you would get this from API
         setTraveler({
@@ -215,7 +215,7 @@ export default function ChatDetailScreen() {
           photo_url: null,
           is_online: false
         });
-        
+
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching chat data:', error);
@@ -223,20 +223,20 @@ export default function ChatDetailScreen() {
         setIsLoading(false);
       }
     };
-    
+
     fetchChatData();
   }, [userId, conversationId]);
 
   // Load more messages
   const loadMoreMessages = async () => {
     if (!hasMoreMessages || isLoadingMore || !conversationId) return;
-    
+
     try {
       setIsLoadingMore(true);
       const nextPage = currentPage + 1;
-      
+
       const response = await getMessages(conversationId, nextPage);
-      
+
       // Transform and add messages
       const olderMessages: MessageData[] = response.messages.map(msg => ({
         id: msg.id.toString(),
@@ -245,7 +245,7 @@ export default function ChatDetailScreen() {
         timestamp: msg.created_at,
         status: msg.read_at ? 'read' : 'delivered'
       }));
-      
+
       setMessages(prevMessages => [...olderMessages, ...prevMessages]);
       setHasMoreMessages(response.total > (olderMessages.length + messages.length));
       setCurrentPage(nextPage);
@@ -259,16 +259,16 @@ export default function ChatDetailScreen() {
   // Send typing indicators to the server
   const handleTextChange = (text: string) => {
     setMessageText(text);
-    
+
     if (text.length > 0 && socketConnected && conversationId) {
       // Send typing indicator
       socketService.sendTypingStatus(true, conversationId);
-      
+
       // Stop typing indicator after 2 seconds of inactivity
       const debounce = setTimeout(() => {
         socketService.sendTypingStatus(false, conversationId);
       }, 2000);
-      
+
       return () => clearTimeout(debounce);
     }
   };
@@ -276,7 +276,7 @@ export default function ChatDetailScreen() {
   // Handle sending message
   const handleSendMessage = async () => {
     if (messageText.trim() === '' || !conversationId) return;
-    
+
     try {
       // Add optimistic message to UI first
       const optimisticMessage: MessageData = {
@@ -286,19 +286,19 @@ export default function ChatDetailScreen() {
         timestamp: new Date().toISOString(),
         status: 'sent'
       };
-      
+
       setMessages(prev => [...prev, optimisticMessage]);
       setMessageText('');
-      
+
       // Stop typing indicator
       socketService.sendTypingStatus(false, conversationId);
-      
+
       // Scroll to bottom
       flatListRef.current?.scrollToEnd({ animated: true });
-      
+
       // Actually send the message
       const sentMessage = await sendMessage(conversationId, messageText);
-      
+
       if (sentMessage) {
         // Replace optimistic message with actual message
         setMessages(prev =>
@@ -315,7 +315,7 @@ export default function ChatDetailScreen() {
       } else {
         // Show error if message failed to send
         Alert.alert('Error', 'Failed to send message. Please try again.');
-        
+
         // Remove optimistic message
         setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
       }
@@ -344,15 +344,15 @@ export default function ChatDetailScreen() {
   // Render message item
   const renderMessage = ({ item }: { item: MessageData }) => {
     const isUser = item.sender === 'user';
-    
+
     // Determine if we should show timestamp
     const msgIndex = messages.findIndex(m => m.id === item.id);
-    const showTimestamp = msgIndex === 0 || 
+    const showTimestamp = msgIndex === 0 ||
       new Date(item.timestamp).getHours() !== new Date(messages[msgIndex - 1]?.timestamp || new Date()).getHours();
-    
+
     // Determine if we should show the status
     const showStatus = isUser && item.id === messages[messages.length - 1]?.id;
-    
+
     return (
       <View style={[styles.messageWrapper, isUser ? styles.userMessageWrapper : styles.travelerMessageWrapper]}>
         {showTimestamp && (
@@ -362,19 +362,19 @@ export default function ChatDetailScreen() {
             </Text>
           </View>
         )}
-        
+
         <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.travelerBubble]}>
           <Text style={[styles.messageText, isUser ? styles.userMessageText : styles.travelerMessageText]}>
             {item.text}
           </Text>
-          
+
           {/* Show translate option or original text */}
           {!isUser && !item.isTranslated && (
             <TouchableOpacity style={styles.translateButton}>
               <Text style={styles.translateButtonText}>Translate</Text>
             </TouchableOpacity>
           )}
-          
+
           {!isUser && item.isTranslated && (
             <View style={styles.originalTextContainer}>
               <Text style={styles.originalTextLabel}>Original:</Text>
@@ -382,7 +382,7 @@ export default function ChatDetailScreen() {
             </View>
           )}
         </View>
-        
+
         {/* Message status for user messages */}
         {showStatus && (
           <View style={styles.statusContainer}>
@@ -417,15 +417,15 @@ export default function ChatDetailScreen() {
             headerShown: false,
           }}
         />
-        
+
         {/* Custom Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={24} color="#0066CC" />
           </TouchableOpacity>
-          
+
           {traveler && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.travelerInfo}
               onPress={() => {
                 // Navigate to traveler profile
@@ -442,7 +442,7 @@ export default function ChatDetailScreen() {
                   </View>
                   {traveler.is_online && <View style={styles.activeIndicator} />}
                 </View>
-                
+
                 <View style={styles.travelerTextInfo}>
                   <Text style={styles.travelerName} numberOfLines={1}>{traveler.name}</Text>
                   <Text style={styles.travelerStatus}>
@@ -450,14 +450,14 @@ export default function ChatDetailScreen() {
                   </Text>
                 </View>
               </View>
-              
+
               <TouchableOpacity style={styles.moreButton}>
                 <Ionicons name="ellipsis-vertical" size={20} color="#0066CC" />
               </TouchableOpacity>
             </TouchableOpacity>
           )}
         </View>
-        
+
         {/* Info Banner */}
         <BlurView intensity={80} tint="light" style={styles.infoBanner}>
           <Ionicons name="information-circle" size={18} color="#0066CC" style={styles.infoIcon} />
@@ -465,7 +465,7 @@ export default function ChatDetailScreen() {
             You're chatting with a traveler about their upcoming trip. Be respectful and professional.
           </Text>
         </BlurView>
-        
+
         {/* Messages List */}
         <FlatList
           ref={flatListRef}
@@ -490,12 +490,12 @@ export default function ChatDetailScreen() {
             }
           }}
         />
-        
+
         {/* Message Input */}
-        <Animated.View 
+        <Animated.View
           style={[
             styles.inputContainer,
-            { 
+            {
               borderTopLeftRadius: inputFocused.interpolate({
                 inputRange: [0, 1],
                 outputRange: [20, 0]
@@ -517,21 +517,21 @@ export default function ChatDetailScreen() {
                   </View>
                   <Text style={styles.actionButtonText}>Photo</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity style={styles.actionButton}>
                   <View style={[styles.actionButtonIcon, { backgroundColor: '#F2F8FF' }]}>
                     <Ionicons name="document-text" size={20} color="#0066CC" />
                   </View>
                   <Text style={styles.actionButtonText}>Document</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity style={styles.actionButton}>
                   <View style={[styles.actionButtonIcon, { backgroundColor: '#F2F8FF' }]}>
                     <Ionicons name="location" size={20} color="#0066CC" />
                   </View>
                   <Text style={styles.actionButtonText}>Location</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity style={styles.actionButton}>
                   <View style={[styles.actionButtonIcon, { backgroundColor: '#F2F8FF' }]}>
                     <MaterialCommunityIcons name="translate" size={20} color="#0066CC" />
@@ -540,13 +540,13 @@ export default function ChatDetailScreen() {
                 </TouchableOpacity>
               </View>
             </Animated.View>
-            
+
             {/* Input Actions */}
             <View style={styles.inputActions}>
               <TouchableOpacity style={styles.attachButton} onPress={toggleActions}>
                 <Ionicons name="add-circle" size={24} color="#0066CC" />
               </TouchableOpacity>
-              
+
               <View style={styles.textInputContainer}>
                 <TextInput
                   style={styles.textInput}
@@ -566,19 +566,19 @@ export default function ChatDetailScreen() {
                     }
                   }}
                 />
-                
+
                 <TouchableOpacity style={styles.emojiButton}>
                   <Ionicons name="happy" size={22} color="#8E8E93" />
                 </TouchableOpacity>
               </View>
-              
+
               {messageText.trim() ? (
                 <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
                   <Ionicons name="send" size={20} color="white" />
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity 
-                  style={[styles.sendButton, styles.micButton, isRecording && styles.recordingButton]} 
+                <TouchableOpacity
+                  style={[styles.sendButton, styles.micButton, isRecording && styles.recordingButton]}
                   onPress={handleRecord}
                 >
                   <Ionicons name={isRecording ? "stop" : "mic"} size={20} color="white" />

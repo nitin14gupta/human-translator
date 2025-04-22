@@ -6,13 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  StyleSheet,
   Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { apiFetch } from "@/src/services/api";
+import { apiFetch, getBookings } from "@/src/services/api";
 import { LinearGradient } from "expo-linear-gradient";
 
 interface Language {
@@ -58,14 +57,21 @@ export default function TranslatorDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [translator, setTranslator] = useState<TranslatorProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hasActiveBooking, setHasActiveBooking] = useState(false);
 
-  // Fetch translator details from API
+  // Fetch translator details and check for active bookings
   useEffect(() => {
-    const fetchTranslatorDetails = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await apiFetch<TranslatorProfile>(`/api/translators/${id}`);
-        setTranslator(response);
+
+        // Fetch translator details
+        const translatorResponse = await apiFetch<TranslatorProfile>(`/api/translators/${id}`);
+        setTranslator(translatorResponse);
+
+        // Check if user has active bookings with this translator
+        await checkActiveBookings(id as string);
+
         setLoading(false);
       } catch (error) {
         console.error("Error fetching translator details:", error);
@@ -74,8 +80,27 @@ export default function TranslatorDetailScreen() {
       }
     };
 
-    fetchTranslatorDetails();
+    fetchData();
   }, [id]);
+
+  // Check if traveler has active bookings with this translator
+  const checkActiveBookings = async (translatorId: string) => {
+    try {
+      // Get upcoming bookings
+      const bookings = await getBookings("upcoming");
+
+      // Check if any booking is with this translator
+      const hasBooking = bookings.some(
+        booking => booking.other_user_id === translatorId &&
+          (booking.status === "confirmed" || booking.status === "pending")
+      );
+
+      setHasActiveBooking(hasBooking);
+    } catch (error) {
+      console.error("Error checking bookings:", error);
+      setHasActiveBooking(false);
+    }
+  };
 
   const handleBookTranslator = () => {
     if (!translator?.is_available) {
@@ -90,10 +115,29 @@ export default function TranslatorDetailScreen() {
     router.push(`/payment/${id}`);
   };
 
-  const handleContactTranslator = () => {
-    // Navigate to chat screen with translator ID
-    router.push(`/${id}`);
+  const getAvailabilityStatus = () => {
+    if (hasActiveBooking) {
+      return {
+        label: "Already Booked",
+        color: "#10B981", // green
+        icon: "check-circle"
+      };
+    } else if (translator?.is_available) {
+      return {
+        label: "Available Now",
+        color: "#10B981", // green
+        icon: "access-time"
+      };
+    } else {
+      return {
+        label: "Unavailable",
+        color: "#6B7280", // gray
+        icon: "schedule"
+      };
+    }
   };
+
+  const status = getAvailabilityStatus();
 
   if (loading) {
     return (
@@ -125,14 +169,14 @@ export default function TranslatorDetailScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       <StatusBar style="light" />
-      
+
       {/* Custom header with gradient background */}
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
-      
+
       <ScrollView className="flex-1">
         {/* Profile Header with Gradient */}
         <LinearGradient
@@ -172,7 +216,18 @@ export default function TranslatorDetailScreen() {
               </Text>
             </View>
 
-            <View className="flex-row mt-3">
+            {/* Availability Badge */}
+            <View
+              className="flex-row items-center bg-white/20 px-3 py-1 rounded-full mt-2"
+              style={{ borderColor: status.color, borderWidth: 1 }}
+            >
+              <MaterialIcons name={status.icon as any} size={14} color={status.color} />
+              <Text style={{ color: status.color }} className="ml-1 font-medium">
+                {status.label}
+              </Text>
+            </View>
+
+            <View className="flex-row mt-3 w-full justify-evenly">
               <View className="items-center px-4">
                 <View className="flex-row items-center">
                   <Ionicons name="star" size={16} color="#FFD700" />
@@ -199,41 +254,60 @@ export default function TranslatorDetailScreen() {
             </View>
           </View>
 
-          <View className="flex-row justify-between mt-6">
-            <TouchableOpacity
-              className="flex-1 mr-2 bg-white rounded-full py-2 px-4 items-center"
-              onPress={handleContactTranslator}
-            >
-              <Text className="text-blue-600 font-medium">Message</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className={`flex-1 ml-2 rounded-full py-2 px-4 items-center ${
-                translator.is_available
-                  ? "bg-green-500"
-                  : "bg-gray-400"
+          {/* Book Now Button */}
+          <TouchableOpacity
+            className={`w-full py-3 px-4 rounded-xl items-center mt-6 ${hasActiveBooking
+              ? "bg-blue-800"
+              : translator.is_available
+                ? "bg-green-500"
+                : "bg-gray-400"
               }`}
-              onPress={handleBookTranslator}
-              disabled={!translator.is_available}
-            >
-              <Text className="text-white font-medium">
-                {translator.is_available ? "Book Now" : "Unavailable"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+            onPress={handleBookTranslator}
+            disabled={!translator.is_available || hasActiveBooking}
+          >
+            <Text className="text-white font-bold text-base">
+              {hasActiveBooking
+                ? "Already Booked"
+                : translator.is_available
+                  ? "Book Now"
+                  : "Currently Unavailable"
+              }
+            </Text>
+          </TouchableOpacity>
         </LinearGradient>
 
+        {/* Experience Badge */}
+        {translator.years_of_experience > 0 && (
+          <View className="flex-row items-center bg-blue-50 p-4 mx-4 mt-4 rounded-xl">
+            <View className="w-10 h-10 rounded-full bg-blue-100 items-center justify-center">
+              <MaterialCommunityIcons name="certificate" size={20} color="#1a73e8" />
+            </View>
+            <View className="ml-3">
+              <Text className="text-blue-800 font-bold">Experienced Translator</Text>
+              <Text className="text-gray-600">
+                {translator.years_of_experience} {translator.years_of_experience === 1 ? 'year' : 'years'} of translation experience
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* About Section */}
-        <View className="bg-white p-4 mt-4">
-          <Text className="text-lg font-bold text-gray-900 mb-2">About</Text>
+        <View className="bg-white p-4 mt-4 rounded-xl mx-4 shadow-sm">
+          <View className="flex-row items-center mb-2">
+            <MaterialIcons name="person-outline" size={20} color="#1a73e8" />
+            <Text className="text-lg font-bold text-gray-900 ml-2">About</Text>
+          </View>
           <Text className="text-gray-700 leading-5">
             {translator.bio || "No bio provided."}
           </Text>
         </View>
 
         {/* Languages Section */}
-        <View className="bg-white p-4 mt-2">
-          <Text className="text-lg font-bold text-gray-900 mb-2">Languages</Text>
+        <View className="bg-white p-4 mt-4 rounded-xl mx-4 shadow-sm">
+          <View className="flex-row items-center mb-2">
+            <MaterialCommunityIcons name="translate" size={20} color="#1a73e8" />
+            <Text className="text-lg font-bold text-gray-900 ml-2">Languages</Text>
+          </View>
           <View className="flex-row flex-wrap">
             {translator.languages.map((lang, index) => (
               <View
@@ -241,7 +315,7 @@ export default function TranslatorDetailScreen() {
                 className="bg-blue-50 rounded-full px-3 py-1 mr-2 mb-2"
               >
                 <Text className="text-blue-700">
-                  {lang.language_name} 
+                  {lang.language_name}
                   {lang.proficiency_level && ` (${lang.proficiency_level})`}
                 </Text>
               </View>
@@ -251,10 +325,13 @@ export default function TranslatorDetailScreen() {
 
         {/* Education Section */}
         {translator.education && translator.education.length > 0 && (
-          <View className="bg-white p-4 mt-2">
-            <Text className="text-lg font-bold text-gray-900 mb-2">
-              Education
-            </Text>
+          <View className="bg-white p-4 mt-4 rounded-xl mx-4 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="school-outline" size={20} color="#1a73e8" />
+              <Text className="text-lg font-bold text-gray-900 ml-2">
+                Education
+              </Text>
+            </View>
             {translator.education.map((edu, index) => (
               <View key={index} className="mb-2">
                 <Text className="text-gray-900 font-medium">
@@ -270,10 +347,13 @@ export default function TranslatorDetailScreen() {
 
         {/* Certificates Section */}
         {translator.certificates && translator.certificates.length > 0 && (
-          <View className="bg-white p-4 mt-2">
-            <Text className="text-lg font-bold text-gray-900 mb-2">
-              Certificates
-            </Text>
+          <View className="bg-white p-4 mt-4 rounded-xl mx-4 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <MaterialCommunityIcons name="certificate-outline" size={20} color="#1a73e8" />
+              <Text className="text-lg font-bold text-gray-900 ml-2">
+                Certificates
+              </Text>
+            </View>
             {translator.certificates.map((cert, index) => (
               <View key={index} className="flex-row justify-between mb-2">
                 <View>
@@ -301,10 +381,13 @@ export default function TranslatorDetailScreen() {
 
         {/* Specializations Section */}
         {translator.specializations && translator.specializations.length > 0 && (
-          <View className="bg-white p-4 mt-2">
-            <Text className="text-lg font-bold text-gray-900 mb-2">
-              Specializations
-            </Text>
+          <View className="bg-white p-4 mt-4 rounded-xl mx-4 shadow-sm">
+            <View className="flex-row items-center mb-2">
+              <MaterialIcons name="star-outline" size={20} color="#1a73e8" />
+              <Text className="text-lg font-bold text-gray-900 ml-2">
+                Specializations
+              </Text>
+            </View>
             <View className="flex-row flex-wrap">
               {translator.specializations.map((spec, index) => (
                 <View
@@ -319,38 +402,58 @@ export default function TranslatorDetailScreen() {
         )}
 
         {/* Preferred Meeting Locations */}
-        {translator.preferred_meeting_locations && 
-         translator.preferred_meeting_locations.length > 0 && (
-          <View className="bg-white p-4 mt-2 mb-4">
-            <Text className="text-lg font-bold text-gray-900 mb-2">
-              Preferred Meeting Locations
-            </Text>
-            {translator.preferred_meeting_locations.map((location, index) => (
-              <View key={index} className="flex-row items-center mb-1">
-                <Ionicons name="location-outline" size={16} color="#6B7280" />
-                <Text className="text-gray-700 ml-2">{location}</Text>
+        {translator.preferred_meeting_locations &&
+          translator.preferred_meeting_locations.length > 0 && (
+            <View className="bg-white p-4 mt-4 mb-4 rounded-xl mx-4 shadow-sm">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="location-outline" size={20} color="#1a73e8" />
+                <Text className="text-lg font-bold text-gray-900 ml-2">
+                  Preferred Meeting Locations
+                </Text>
               </View>
-            ))}
-          </View>
-        )}
+              {translator.preferred_meeting_locations.map((location, index) => (
+                <View key={index} className="flex-row items-center mb-1">
+                  <View className="w-2 h-2 rounded-full bg-gray-400 mr-2" />
+                  <Text className="text-gray-700">{location}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
         {/* Book Now Button (Bottom) */}
         <View className="p-4 mb-4">
           <TouchableOpacity
-            className={`w-full py-3 px-4 rounded-xl items-center ${
-              translator.is_available
+            className={`w-full py-3 px-4 rounded-xl items-center ${hasActiveBooking
+              ? "bg-blue-800"
+              : translator.is_available
                 ? "bg-blue-600"
                 : "bg-gray-400"
-            }`}
+              }`}
             onPress={handleBookTranslator}
-            disabled={!translator.is_available}
+            disabled={!translator.is_available || hasActiveBooking}
           >
-            <Text className="text-white font-bold text-lg">
-              {translator.is_available ? "Book This Translator" : "Currently Unavailable"}
-            </Text>
+            <View className="flex-row items-center">
+              {hasActiveBooking ? (
+                <Ionicons name="checkmark-circle" size={20} color="white" />
+              ) : translator.is_available ? (
+                <Ionicons name="calendar" size={20} color="white" />
+              ) : (
+                <Ionicons name="time-outline" size={20} color="white" />
+              )}
+              <Text className="text-white font-bold text-lg ml-2">
+                {hasActiveBooking
+                  ? "Already Booked"
+                  : translator.is_available
+                    ? "Book This Translator"
+                    : "Currently Unavailable"
+                }
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
   );
-} 
+}
+
+//ye translator detail screen hai

@@ -32,10 +32,10 @@ function Layout() {
         setIsLanguageLoaded(true); // Continue anyway with default language
       }
     };
-    
+
     initLanguage();
   }, []);
-  
+
   // Show loading if auth or language is still initializing
   if (isLoading || !isLanguageLoaded) {
     return (
@@ -55,6 +55,9 @@ function Layout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(shared)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(traveler)" options={{ headerShown: false }} />
+        <Stack.Screen name="(translator)" options={{ headerShown: false }} />
+        <Stack.Screen name='fallbacks' options={{ headerShown: false }} />
       </Stack>
     </FallbackHandler>
   );

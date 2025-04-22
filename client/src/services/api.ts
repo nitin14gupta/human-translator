@@ -36,9 +36,9 @@ const handleResponse = async (response: Response) => {
     isServerMaintenance = true;
     throw new Error('Server is under maintenance');
   }
-  
+
   const data = await response.json();
-  
+
   if (!response.ok) {
     console.error('API Error:', {
       status: response.status,
@@ -47,7 +47,7 @@ const handleResponse = async (response: Response) => {
     });
     throw new Error(data.error || data.detail || 'An error occurred');
   }
-  
+
   return data;
 };
 
@@ -76,16 +76,16 @@ export const apiFetch = async <T = any>(endpoint: string, options?: RequestInit)
     if (isOffline) {
       throw new Error('No internet connection');
     }
-    
+
     if (isServerMaintenance) {
       throw new Error('Server is under maintenance');
     }
 
     // Only get auth headers for protected endpoints
-    const isPublicEndpoint = endpoint.includes('/login') || 
-                            endpoint.includes('/register') || 
-                            endpoint.includes('/reset-password');
-    
+    const isPublicEndpoint = endpoint.includes('/login') ||
+      endpoint.includes('/register') ||
+      endpoint.includes('/reset-password');
+
     let headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -104,7 +104,7 @@ export const apiFetch = async <T = any>(endpoint: string, options?: RequestInit)
     if (options?.headers) {
       headers = { ...headers, ...(options.headers as Record<string, string>) };
     }
-    
+
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
       headers
@@ -117,11 +117,11 @@ export const apiFetch = async <T = any>(endpoint: string, options?: RequestInit)
       headers,
       body: options?.body
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.log('Error response:', errorData);
-      
+
       if (response.status === 401) {
         // Clear auth data on 401 errors
         await AsyncStorage.removeItem('authToken');
@@ -137,10 +137,10 @@ export const apiFetch = async <T = any>(endpoint: string, options?: RequestInit)
       if (response.status === 404) {
         throw new Error('Resource not found');
       }
-      
+
       throw new Error(errorData.error || errorData.msg || 'An error occurred');
     }
-    
+
     const data = await response.json();
     return data as T;
   } catch (error) {
@@ -215,35 +215,35 @@ export const createUserProfile = async (profileData: any) => {
   try {
     const headers = await createAuthHeaders();
     console.log('Creating profile with data:', profileData);
-    
+
     // Get user type from AsyncStorage instead of API call
     const isTraveler = await AsyncStorage.getItem('isNeedTranslator');
     const endpoint = isTraveler === 'true' ? '/api/profiles/traveler' : '/api/profiles/translator';
-    
+
     // Ensure proper data structure
     const requestData = {
       full_name: profileData.full_name,
       phone_number: profileData.phone_number,
-      ...(isTraveler === 'true' 
-        ? { 
-            nationality: profileData.nationality,
-            languages_needed: profileData.languages_needed || profileData.languages  // Handle both field names
-          }
+      ...(isTraveler === 'true'
+        ? {
+          nationality: profileData.nationality,
+          languages_needed: profileData.languages_needed || profileData.languages  // Handle both field names
+        }
         : {
-            hourly_rate: Number(profileData.hourly_rate),
-            languages: profileData.languages
-          }
+          hourly_rate: Number(profileData.hourly_rate),
+          languages: profileData.languages
+        }
       )
     };
 
     console.log('Sending request with data:', requestData);
-    
+
     const result = await apiFetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestData)
     });
-    
+
     console.log('Profile creation result:', result);
     await AsyncStorage.removeItem('needsProfileSetup');
     return result;
@@ -403,21 +403,21 @@ export const getConversations = async (): Promise<Conversation[]> => {
   }
 };
 
-export const getMessages = async (conversationId: string, page: number = 1, perPage: number = 20): Promise<{ 
+export const getMessages = async (conversationId: string, page: number = 1, perPage: number = 20): Promise<{
   messages: ChatMessage[],
   total: number,
   page: number,
   pages: number
 }> => {
   try {
-    const response = await apiFetch<{ 
+    const response = await apiFetch<{
       messages: ChatMessage[],
       total: number,
       page: number,
       per_page: number,
       pages: number
     }>(`/api/chat/conversations/${conversationId}/messages?page=${page}&per_page=${perPage}`);
-    
+
     return {
       messages: response.messages,
       total: response.total,
@@ -444,7 +444,7 @@ export const sendMessage = async (conversationId: string, content: string): Prom
       },
       body: JSON.stringify({ content })
     });
-    
+
     return response.message;
   } catch (error) {
     console.error('Error sending message:', error);
@@ -526,5 +526,87 @@ export const getPaymentHistory = async (): Promise<any[]> => {
   } catch (error) {
     console.error('Error getting payment history:', error);
     return [];
+  }
+};
+
+// Earnings related functions
+export interface EarningsSummary {
+  today_earnings: number;
+  total_earnings: number;
+  pending_earnings: number;
+  available_balance: number;
+  total_payouts: number;
+  weekly_earnings: number[];
+  weekly_labels: string[];
+}
+
+export interface Transaction {
+  id: string;
+  travelerName: string;
+  date: string;
+  amount: number;
+  status: "completed" | "pending" | "confirmed";
+  type: "earning" | "payout";
+}
+
+export interface WithdrawRequest {
+  amount: number;
+  payment_method: string;
+}
+
+export interface WithdrawResponse {
+  status: string;
+  payout_id: string;
+  amount: number;
+  new_balance: number;
+}
+
+export const getEarningsSummary = async (): Promise<EarningsSummary> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/payments/earnings', {
+      method: 'GET',
+      headers
+    });
+  } catch (error) {
+    console.error('Error getting earnings summary:', error);
+    // Return default values in case of error
+    return {
+      today_earnings: 0,
+      total_earnings: 0,
+      pending_earnings: 0,
+      available_balance: 0,
+      total_payouts: 0,
+      weekly_earnings: [0, 0, 0, 0, 0, 0, 0],
+      weekly_labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    };
+  }
+};
+
+export const getEarningsTransactions = async (type?: 'earnings' | 'payouts' | 'all'): Promise<Transaction[]> => {
+  try {
+    const headers = await createAuthHeaders();
+    const queryParams = type && type !== 'all' ? `?type=${type}` : '';
+    return await apiFetch(`/api/payments/earnings/transactions${queryParams}`, {
+      method: 'GET',
+      headers
+    });
+  } catch (error) {
+    console.error('Error getting earnings transactions:', error);
+    return [];
+  }
+};
+
+export const withdrawEarnings = async (data: WithdrawRequest): Promise<WithdrawResponse> => {
+  try {
+    const headers = await createAuthHeaders();
+    return await apiFetch('/api/payments/earnings/withdraw', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data)
+    });
+  } catch (error) {
+    console.error('Error withdrawing earnings:', error);
+    throw error;
   }
 }; 

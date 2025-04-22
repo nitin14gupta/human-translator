@@ -100,7 +100,7 @@ export default function ChatDetailScreen() {
   const { user } = useAuth();
   const userId = user?.id;
   const conversationId = id as string;
-  
+
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<MessageData[]>([]);
   const [inputText, setInputText] = useState("");
@@ -112,11 +112,11 @@ export default function ChatDetailScreen() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [translator, setTranslator] = useState<TranslatorProfile | null>(null);
-  
+
   const scrollViewRef = useRef<ScrollView>(null);
   const messagesEndRef = useRef<View>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Connect to WebSocket when component mounts
   useEffect(() => {
     const connectSocket = async () => {
@@ -124,25 +124,25 @@ export default function ChatDetailScreen() {
         await socketService.initialize(userId);
       }
     };
-    
+
     connectSocket();
-    
+
     return () => {
       socketService.disconnect();
     };
   }, [userId]);
-  
+
   // Handle real-time messages
   useEffect(() => {
     const handleNewMessage = (message: any) => {
       // Only process messages that are part of this conversation
-      const isFromConversationPartner = 
-        message.sender_id.toString() === conversationId || 
+      const isFromConversationPartner =
+        message.sender_id.toString() === conversationId ||
         message.receiver_id.toString() === conversationId;
-        
+
       if (isFromConversationPartner) {
         const isInbound = message.sender_id.toString() !== userId?.toString();
-        
+
         const newMessage: MessageData = {
           id: message.id.toString(),
           text: message.content,
@@ -150,20 +150,20 @@ export default function ChatDetailScreen() {
           timestamp: message.created_at,
           status: isInbound ? undefined : 'sent'
         };
-        
+
         setMessages(prev => [newMessage, ...prev]);
-        
+
         // Mark inbound messages as read
         if (isInbound) {
           markConversationAsRead(conversationId);
         }
       }
     };
-    
+
     const unsubscribe = socketService.onMessage(handleNewMessage);
     return () => unsubscribe();
   }, [conversationId, userId]);
-  
+
   // Handle typing indicators
   useEffect(() => {
     const handleTypingStatus = (typingUserId: string, isTyping: boolean) => {
@@ -171,20 +171,20 @@ export default function ChatDetailScreen() {
         setIsOtherUserTyping(isTyping);
       }
     };
-    
+
     const unsubscribe = socketService.onTypingStatusChange(handleTypingStatus);
     return () => unsubscribe();
   }, [conversationId]);
-  
+
   // Fetch translator profile and initial messages
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch messages
         const response = await getMessages(conversationId);
-        
+
         // Transform messages to our format
         const transformedMessages: MessageData[] = response.messages.map(msg => ({
           id: msg.id.toString(),
@@ -193,13 +193,13 @@ export default function ChatDetailScreen() {
           timestamp: msg.created_at,
           status: msg.read ? 'read' : 'delivered'
         }));
-        
+
         setMessages(transformedMessages);
         setHasMoreMessages(response.total > transformedMessages.length);
-        
+
         // Mark all messages as read
         await markConversationAsRead(conversationId);
-        
+
         // Fetch translator profile (simplified for now)
         setTranslator({
           id: conversationId,
@@ -209,28 +209,28 @@ export default function ChatDetailScreen() {
           lastSeen: new Date().toISOString(),
           languages: ["English", "Spanish"]
         });
-        
+
         setLoading(false);
       } catch (error) {
         console.error('Error fetching chat data:', error);
         setLoading(false);
       }
     };
-    
+
     if (userId && conversationId) {
       fetchData();
     }
   }, [conversationId, userId]);
-  
+
   const loadMoreMessages = async () => {
     if (!hasMoreMessages || loadingMore) return;
-    
+
     try {
       setLoadingMore(true);
       const nextPage = page + 1;
-      
+
       const response = await getMessages(conversationId, nextPage);
-      
+
       // Transform and add new messages
       const newMessages: MessageData[] = response.messages.map(msg => ({
         id: msg.id.toString(),
@@ -239,7 +239,7 @@ export default function ChatDetailScreen() {
         timestamp: msg.created_at,
         status: msg.read ? 'read' : 'delivered'
       }));
-      
+
       setMessages(prev => [...prev, ...newMessages]);
       setPage(nextPage);
       setHasMoreMessages(response.total > (messages.length + newMessages.length));
@@ -249,10 +249,10 @@ export default function ChatDetailScreen() {
       setLoadingMore(false);
     }
   };
-  
+
   const renderTypingIndicator = () => {
     if (!isOtherUserTyping) return null;
-    
+
     return (
       <View className="flex-row items-start my-2 ml-2">
         <View className="bg-gray-200 rounded-2xl rounded-tl-none p-2 px-4 max-w-[80%]">
@@ -261,40 +261,40 @@ export default function ChatDetailScreen() {
       </View>
     );
   };
-  
+
   const handleTextChange = (text: string) => {
     setInputText(text);
-    
+
     if (text.length > 0 && !isTyping) {
       setIsTyping(true);
       socketService.sendTypingStatus(true, conversationId);
     }
-    
+
     // Reset typing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-    
+
     // Set new timeout
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
       socketService.sendTypingStatus(false, conversationId);
     }, 2000);
   };
-  
+
   const handleSendMessage = async () => {
     if (!inputText.trim() || !userId) return;
-    
+
     const messageText = inputText.trim();
     setInputText("");
-    
+
     // Stop typing indicator
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
     setIsTyping(false);
     socketService.sendTypingStatus(false, conversationId);
-    
+
     // Optimistically add message to UI
     const tempMessage: MessageData = {
       id: `temp-${Date.now()}`,
@@ -303,25 +303,25 @@ export default function ChatDetailScreen() {
       timestamp: new Date().toISOString(),
       status: 'sent'
     };
-    
+
     setMessages(prev => [tempMessage, ...prev]);
-    
+
     // Send message to API
     try {
       const response = await sendMessage(conversationId, messageText);
-      
+
       if (response) {
         // Replace temp message with actual message
-        setMessages(prev => 
-          prev.map(msg => 
+        setMessages(prev =>
+          prev.map(msg =>
             msg.id === tempMessage.id
               ? {
-                  id: response.id.toString(),
-                  text: response.content,
-                  sender: 'user',
-                  timestamp: response.created_at,
-                  status: 'sent'
-                }
+                id: response.id.toString(),
+                text: response.content,
+                sender: 'user',
+                timestamp: response.created_at,
+                status: 'sent'
+              }
               : msg
           )
         );
@@ -331,80 +331,74 @@ export default function ChatDetailScreen() {
       // You could add error handling here
     }
   };
-  
+
   const toggleActions = () => {
     setShowActions(!showActions);
     if (isRecording) {
       setIsRecording(false);
     }
   };
-  
+
   const handleRecord = () => {
     setIsRecording(!isRecording);
     // Implement voice recording logic here
   };
-  
+
   const renderMessage = ({ item }: { item: MessageData }) => {
     const isUserMessage = item.sender === 'user';
     const messageTime = new Date(item.timestamp).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
     });
-    
+
     return (
       <View
-        className={`my-1 mx-2 flex-row ${
-          isUserMessage ? 'justify-end' : 'justify-start'
-        }`}
+        className={`my-1 mx-2 flex-row ${isUserMessage ? 'justify-end' : 'justify-start'
+          }`}
       >
         <View
-          className={`p-3 rounded-2xl max-w-[80%] ${
-            isUserMessage
-              ? 'bg-blue-500 rounded-tr-none'
-              : 'bg-gray-200 rounded-tl-none'
-          }`}
+          className={`p-3 rounded-2xl max-w-[80%] ${isUserMessage
+            ? 'bg-blue-500 rounded-tr-none'
+            : 'bg-gray-200 rounded-tl-none'
+            }`}
         >
           <Text
-            className={`${
-              isUserMessage ? 'text-white' : 'text-gray-800'
-            } text-base`}
+            className={`${isUserMessage ? 'text-white' : 'text-gray-800'
+              } text-base`}
           >
             {item.text}
           </Text>
-          
+
           {item.isTranslated && (
             <TouchableOpacity className="mt-1">
               <Text
-                className={`text-xs italic ${
-                  isUserMessage ? 'text-blue-100' : 'text-gray-500'
-                }`}
+                className={`text-xs italic ${isUserMessage ? 'text-blue-100' : 'text-gray-500'
+                  }`}
               >
                 Original: {item.originalText}
               </Text>
             </TouchableOpacity>
           )}
-          
+
           <View
-            className={`flex-row items-center justify-end mt-1 ${
-              isUserMessage ? 'justify-end' : 'justify-start'
-            }`}
+            className={`flex-row items-center justify-end mt-1 ${isUserMessage ? 'justify-end' : 'justify-start'
+              }`}
           >
             <Text
-              className={`text-xs mr-1 ${
-                isUserMessage ? 'text-blue-100' : 'text-gray-500'
-              }`}
+              className={`text-xs mr-1 ${isUserMessage ? 'text-blue-100' : 'text-gray-500'
+                }`}
             >
               {messageTime}
             </Text>
-            
+
             {isUserMessage && item.status && (
               <Ionicons
                 name={
                   item.status === 'read'
                     ? 'checkmark-done'
                     : item.status === 'delivered'
-                    ? 'checkmark-done-outline'
-                    : 'checkmark-outline'
+                      ? 'checkmark-done-outline'
+                      : 'checkmark-outline'
                 }
                 size={16}
                 color="#ffffff"
@@ -415,7 +409,7 @@ export default function ChatDetailScreen() {
       </View>
     );
   };
-  
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
@@ -424,7 +418,7 @@ export default function ChatDetailScreen() {
       </View>
     );
   }
-  
+
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-white"
@@ -432,7 +426,7 @@ export default function ChatDetailScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <StatusBar style="light" />
-      
+
       {/* Header */}
       <View className="bg-blue-600 pt-12 pb-3 px-4">
         <View className="flex-row items-center">
@@ -442,7 +436,7 @@ export default function ChatDetailScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          
+
           <View className="flex-row flex-1 items-center ml-2">
             {translator?.avatar ? (
               <Image
@@ -456,7 +450,7 @@ export default function ChatDetailScreen() {
                 </Text>
               </View>
             )}
-            
+
             <View className="ml-3">
               <Text className="text-white font-semibold text-lg">
                 {translator?.name || 'Translator'}
@@ -465,25 +459,25 @@ export default function ChatDetailScreen() {
                 {translator?.isActive
                   ? 'Online'
                   : `Last seen ${new Date(
-                      translator?.lastSeen || new Date()
-                    ).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}`}
+                    translator?.lastSeen || new Date()
+                  ).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}`}
               </Text>
             </View>
           </View>
-          
+
           <TouchableOpacity className="p-2">
             <Ionicons name="call-outline" size={22} color="white" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity className="p-2">
             <Ionicons name="ellipsis-vertical" size={22} color="white" />
           </TouchableOpacity>
         </View>
       </View>
-      
+
       {/* Messages */}
       <FlatList
         className="flex-1 bg-gray-50"
@@ -502,7 +496,7 @@ export default function ChatDetailScreen() {
         }
         ListHeaderComponent={renderTypingIndicator()}
       />
-      
+
       {/* Input area */}
       <View className="border-t border-gray-200 bg-white px-2 py-2">
         {showActions && (
@@ -521,7 +515,7 @@ export default function ChatDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
-        
+
         <View className="flex-row items-center">
           <TouchableOpacity
             className="p-2"
@@ -533,7 +527,7 @@ export default function ChatDetailScreen() {
               color="#4B5563"
             />
           </TouchableOpacity>
-          
+
           <View className="flex-1 bg-gray-100 rounded-full flex-row items-center px-3 py-1 mx-1">
             <TextInput
               className="flex-1 text-gray-800 py-2 px-1"
@@ -543,14 +537,14 @@ export default function ChatDetailScreen() {
               multiline
               maxLength={500}
             />
-            
+
             {inputText.length === 0 && (
               <TouchableOpacity className="p-1 ml-1">
                 <Ionicons name="happy-outline" size={24} color="#4B5563" />
               </TouchableOpacity>
             )}
           </View>
-          
+
           {inputText.length > 0 ? (
             <TouchableOpacity
               className="bg-blue-500 rounded-full p-2 ml-1"
@@ -560,9 +554,8 @@ export default function ChatDetailScreen() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              className={`rounded-full p-2 ml-1 ${
-                isRecording ? 'bg-red-500' : 'bg-gray-200'
-              }`}
+              className={`rounded-full p-2 ml-1 ${isRecording ? 'bg-red-500' : 'bg-gray-200'
+                }`}
               onPress={handleRecord}
             >
               <Ionicons

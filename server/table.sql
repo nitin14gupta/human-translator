@@ -112,6 +112,32 @@ CREATE TABLE payments (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Translator earnings from completed bookings
+CREATE TABLE translator_earnings (
+    id SERIAL PRIMARY KEY,
+    translator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    amount DECIMAL(10, 2) NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'available', 'paid')),
+    payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_booking_earning UNIQUE (booking_id)
+);
+
+-- Translator payouts (withdrawals)
+CREATE TABLE translator_payouts (
+    id SERIAL PRIMARY KEY,
+    translator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+    transaction_id VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Ratings and reviews for completed sessions
 CREATE TABLE ratings (
     id SERIAL PRIMARY KEY,
@@ -139,6 +165,10 @@ CREATE INDEX idx_payments_booking ON payments(booking_id);
 CREATE INDEX idx_payments_status ON payments(status);
 CREATE INDEX idx_ratings_booking ON ratings(booking_id);
 CREATE INDEX idx_ratings_reviewee ON ratings(reviewee_id);
+CREATE INDEX idx_translator_earnings_translator ON translator_earnings(translator_id);
+CREATE INDEX idx_translator_earnings_status ON translator_earnings(status);
+CREATE INDEX idx_translator_payouts_translator ON translator_payouts(translator_id);
+CREATE INDEX idx_translator_payouts_status ON translator_payouts(status);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -175,5 +205,12 @@ CREATE TRIGGER update_payments_updated_at
     FOR EACH ROW
     EXECUTE PROCEDURE update_updated_at_column();
 
--- Remove language_proficiencies table since we're using JSON now
-DROP TABLE IF EXISTS language_proficiencies; 
+CREATE TRIGGER update_translator_earnings_updated_at
+    BEFORE UPDATE ON translator_earnings
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_translator_payouts_updated_at
+    BEFORE UPDATE ON translator_payouts
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_updated_at_column();
