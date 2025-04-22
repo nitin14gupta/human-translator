@@ -108,6 +108,8 @@ CREATE TABLE payments (
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
     payment_method VARCHAR(20) NOT NULL,
+    payment_intent_id VARCHAR(255) UNIQUE,
+    client_secret VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

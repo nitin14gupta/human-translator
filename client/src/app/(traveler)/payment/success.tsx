@@ -1,267 +1,228 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getBookingById } from '@/src/services/api';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { apiFetch } from '@/src/services/api';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function PaymentSuccessScreen() {
-  const router = useRouter();
   const { booking_id } = useLocalSearchParams<{ booking_id: string }>();
+  const router = useRouter();
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [booking, setBooking] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadBookingDetails = async () => {
+    const fetchBookingDetails = async () => {
       try {
-        setLoading(true);
-        
-        if (!booking_id) {
-          throw new Error('Booking ID is required');
+        if (booking_id) {
+          const response = await apiFetch(`/api/bookings/${booking_id}`);
+          setBookingDetails(response);
         }
-        
-        const bookingData = await getBookingById(booking_id);
-        setBooking(bookingData);
-      } catch (err: any) {
-        console.error('Error loading booking:', err);
-        setError(err.message || 'Failed to load booking details');
+      } catch (error) {
+        console.error('Error fetching booking details:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadBookingDetails();
+    fetchBookingDetails();
   }, [booking_id]);
 
   const handleViewBooking = () => {
-    // Navigate to the booking details screen
-    router.push(`/booking/${booking_id}`);
+    router.push(`/bookings/${booking_id}`);
   };
 
-  const handleGoHome = () => {
-    // Navigate back to the home screen
-    router.push('/(tabs)/traveler');
+  const handleBackToHome = () => {
+    router.push('/home');
   };
-
-  const handleContactTranslator = () => {
-    // Navigate to chat with the translator
-    if (booking && booking.other_user_id) {
-      router.push(`/chat/${booking.other_user_id}`);
-    }
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#0056b3" />
-        <Text style={styles.loadingText}>Confirming payment...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={48} color="#e53e3e" />
-        <Text style={styles.errorTitle}>Error Confirming Payment</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity 
-          style={styles.primaryButton}
-          onPress={handleGoHome}
-        >
-          <Text style={styles.primaryButtonText}>Go to Home</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'Payment Successful' }} />
-      <View style={styles.container}>
-        <Animated.View 
-          entering={FadeIn.delay(300).duration(1000)}
-          style={styles.successIconContainer}
-        >
-          <View style={styles.successIconCircle}>
-            <Ionicons name="checkmark" size={80} color="#fff" />
-          </View>
-        </Animated.View>
-        
-        <Animated.Text 
-          entering={FadeInDown.delay(600).duration(800)}
-          style={styles.successTitle}
-        >
-          Payment Successful!
-        </Animated.Text>
-        
-        <Animated.Text 
-          entering={FadeInDown.delay(900).duration(800)}
-          style={styles.successMessage}
-        >
-          Your booking has been confirmed. The translator has been notified and will contact you soon.
-        </Animated.Text>
-        
-        {booking && (
-          <Animated.View 
-            entering={FadeInDown.delay(1200).duration(800)}
-            style={styles.bookingSummary}
-          >
-            <Text style={styles.summaryTitle}>Booking Details</Text>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Translator:</Text>
-              <Text style={styles.summaryValue}>{booking.other_user_name}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Date:</Text>
-              <Text style={styles.summaryValue}>{booking.formatted_date}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Time:</Text>
-              <Text style={styles.summaryValue}>{booking.formatted_time}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Amount Paid:</Text>
-              <Text style={styles.summaryValue}>€{booking.amount.toFixed(2)}</Text>
-            </View>
-          </Animated.View>
-        )}
-        
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleViewBooking}
-          >
-            <Text style={styles.primaryButtonText}>View Booking</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleContactTranslator}
-          >
-            <Text style={styles.secondaryButtonText}>Contact Translator</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.tertiaryButton}
-            onPress={handleGoHome}
-          >
-            <Text style={styles.tertiaryButtonText}>Go to Home</Text>
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      
+      <LinearGradient
+        colors={['#1a73e8', '#0d47a1']}
+        style={styles.header}
+      >
+        <View style={styles.iconContainer}>
+          <Ionicons name="checkmark-circle" size={80} color="#ffffff" />
         </View>
+      </LinearGradient>
+      
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>Payment Successful!</Text>
+        
+        <View style={styles.card}>
+          <Text style={styles.subtitle}>Your booking is confirmed</Text>
+          
+          {bookingDetails && (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Booking ID:</Text>
+                <Text style={styles.value}>#{booking_id}</Text>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Translator:</Text>
+                <Text style={styles.value}>{bookingDetails.translator?.name || 'Your Translator'}</Text>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Date:</Text>
+                <Text style={styles.value}>{bookingDetails.formatted_date || bookingDetails.date}</Text>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Time:</Text>
+                <Text style={styles.value}>{bookingDetails.formatted_time || `${bookingDetails.start_time} (${bookingDetails.duration_hours} hrs)`}</Text>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Location:</Text>
+                <Text style={styles.value}>{bookingDetails.location}</Text>
+              </View>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.detailRow}>
+                <Text style={styles.totalLabel}>Total Amount:</Text>
+                <Text style={styles.totalValue}>€{bookingDetails.total_amount?.toFixed(2)}</Text>
+              </View>
+            </>
+          )}
+          
+          {loading && (
+            <Text style={styles.loadingText}>Loading booking details...</Text>
+          )}
+        </View>
+        
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={24} color="#1a73e8" />
+          <Text style={styles.infoText}>
+            A confirmation has been sent to your email. You can also view your booking details in the app.
+          </Text>
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.primaryButton}
+          onPress={handleViewBooking}
+        >
+          <Text style={styles.primaryButtonText}>View Booking</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.secondaryButton}
+          onPress={handleBackToHome}
+        >
+          <Text style={styles.secondaryButtonText}>Back to Home</Text>
+        </TouchableOpacity>
       </View>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  centered: {
-    flex: 1,
+  header: {
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#555',
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 16,
-    color: '#e53e3e',
-  },
-  errorText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  successIconContainer: {
-    marginTop: 40,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  successIconCircle: {
+  iconContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#4CAF50',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  contentContainer: {
+    flex: 1,
+    marginTop: -40,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
+    marginBottom: 20,
   },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  successMessage: {
-    fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 20,
-  },
-  bookingSummary: {
-    width: '100%',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 32,
-  },
-  summaryTitle: {
+  subtitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 16,
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  summaryRow: {
+  detailRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
-  summaryLabel: {
+  label: {
     fontSize: 16,
-    color: '#555',
-    width: 100,
+    color: '#666',
   },
-  summaryValue: {
+  value: {
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 15,
+  },
+  totalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1a73e8',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginVertical: 10,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: '#e8f4fd',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    alignItems: 'flex-start',
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 10,
     flex: 1,
   },
-  buttonContainer: {
-    width: '100%',
-    marginTop: 'auto',
-    marginBottom: 24,
-  },
   primaryButton: {
-    backgroundColor: '#0056b3',
+    backgroundColor: '#1a73e8',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -273,26 +234,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   secondaryButton: {
-    backgroundColor: '#f0f8ff',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#0056b3',
+    borderColor: '#1a73e8',
   },
   secondaryButtonText: {
-    color: '#0056b3',
+    color: '#1a73e8',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  tertiaryButton: {
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  tertiaryButtonText: {
-    color: '#0056b3',
-    fontSize: 16,
+    fontWeight: '500',
   },
 }); 

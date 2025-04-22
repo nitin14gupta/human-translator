@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getBookingById, createBooking, apiFetch } from '@/src/services/api';
+import { getBookingById, createBooking, apiFetch, Booking, CreateBookingData } from '@/src/services/api';
 
 interface PaymentMethod {
   id: string;
@@ -19,15 +19,51 @@ interface PaymentMethod {
   icon: string;
 }
 
+interface Language {
+  language_code: string;
+  language_name: string;
+  proficiency_level: string;
+}
+
+interface TranslatorProfile {
+  id: string;
+  name: string;
+  photo_url: string;
+  languages: Language[];
+  hourly_rate: number;
+  location: string;
+  bio: string;
+  is_available: boolean;
+  rating: number;
+  booking_count: number;
+}
+
+// Our internal booking data model for the payment screen
+interface BookingData {
+  id: number;
+  translator_id: number;
+  date: string;
+  start_time: string;
+  duration_hours: number;
+  location: string;
+  total_amount: number;
+  notes: string;
+  status?: string;
+  formatted_date?: string;
+  formatted_time?: string;
+}
+
 export default function PaymentScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [booking, setBooking] = useState<any>(null);
+  const [translator, setTranslator] = useState<TranslatorProfile | null>(null);
+  const [booking, setBooking] = useState<BookingData | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [creatingBooking, setCreatingBooking] = useState(false);
+  const [paymentSecret, setPaymentSecret] = useState<string | null>(null);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
 
   const paymentMethods: PaymentMethod[] = [
     { id: 'card', name: 'Credit/Debit Card', icon: 'card-outline' },
@@ -36,66 +72,84 @@ export default function PaymentScreen() {
   ];
 
   useEffect(() => {
-    loadBookingOrCreate();
-  }, [id]);
-
-  const loadBookingOrCreate = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      if (!id) {
-        throw new Error('Translator ID is required');
-      }
-      
+    const fetchData = async () => {
       try {
-        // First try to get the booking if it exists
-        const bookingData = await getBookingById(id);
-        setBooking(bookingData);
-      } catch (err: any) {
-        console.log("Booking not found, creating new booking...");
-        
-        // If booking doesn't exist, create a new one
-        setCreatingBooking(true);
-        
-        // Create a new booking with the translator ID from the URL
+        setLoading(true);
+        setError(null);
+
+        // Fetch translator details
+        const translatorResponse = await apiFetch<TranslatorProfile>(`/api/translators/${id}`);
+        setTranslator(translatorResponse);
+
+        // Create initial booking data
         const today = new Date();
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         
-        const translatorId = parseInt(id);
-        
-        const newBookingData = {
-          translator_id: translatorId,
-          date: tomorrow.toISOString().split('T')[0], // Tomorrow's date
-          start_time: '10:00', // 10 AM
+        const newBookingData: CreateBookingData = {
+          translator_id: parseInt(id as string), // Convert string ID to number
+          date: tomorrow.toISOString().split('T')[0],
+          start_time: '10:00',
           duration_hours: 2,
-          location: 'City Center',
-          total_amount: 120, // Default amount
-          notes: 'Booking created for payment testing'
+          location: translatorResponse.location || 'To be determined',
+          total_amount: translatorResponse.hourly_rate * 2, // 2 hours default duration
+          notes: ''
         };
         
-        const newBooking = await createBooking(newBookingData);
-        setBooking(newBooking);
-        setCreatingBooking(false);
+        // Create booking
+        const bookingResponse = await createBooking(newBookingData);
         
-        // Show success message
-        Alert.alert(
-          'Booking Created',
-          'A test booking has been created. You can now proceed with payment.',
-          [{ text: 'OK' }]
-        );
+        // Convert API booking format to our internal BookingData format
+        const bookingData: BookingData = {
+          id: parseInt(bookingResponse.id),
+          translator_id: parseInt(id as string),
+          date: bookingResponse.date,
+          start_time: bookingResponse.time || '10:00',
+          duration_hours: bookingResponse.duration_hours,
+          location: bookingResponse.location,
+          total_amount: bookingResponse.amount,
+          notes: bookingResponse.notes || '',
+          status: bookingResponse.status,
+          formatted_date: bookingResponse.formatted_date,
+          formatted_time: bookingResponse.formatted_time
+        };
+        
+        setBooking(bookingData);
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Error handling booking:', err);
+        setError(err.message || 'Failed to load or create booking');
+        setLoading(false);
       }
-    } catch (err: any) {
-      console.error('Error handling booking:', err);
-      setError(err.message || 'Failed to load or create booking');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchData();
+  }, [id]);
 
   const handleSelectPaymentMethod = (methodId: string) => {
     setSelectedMethod(methodId);
+  };
+
+  // Function to verify payment status
+  const verifyPayment = async (paymentIntentId: string) => {
+    try {
+      const verifyResponse = await apiFetch('/api/payments/verify', {
+        method: 'POST',
+        body: JSON.stringify({
+          payment_intent_id: paymentIntentId
+        })
+      });
+      
+      // If verification succeeds, navigate to success page
+      router.push(`/payment/success?booking_id=${booking?.id}`);
+    } catch (err: any) {
+      console.error('Payment verification error:', err);
+      Alert.alert(
+        'Payment Verification Failed',
+        err.message || 'There was a problem verifying your payment. Please try again.'
+      );
+      setProcessing(false);
+    }
   };
 
   const handleProcessPayment = async () => {
@@ -104,8 +158,8 @@ export default function PaymentScreen() {
       return;
     }
 
-    if (!booking) {
-      Alert.alert('Error', 'No booking available for payment.');
+    if (!booking || !translator) {
+      Alert.alert('Error', 'Booking information is missing.');
       return;
     }
 
@@ -113,7 +167,13 @@ export default function PaymentScreen() {
       setProcessing(true);
       
       // Call the payment initiation API
-      const response = await apiFetch('/api/payments/initiate', {
+      const response = await apiFetch<{
+        payment_id: string;
+        amount: number;
+        currency: string;
+        client_secret: string;
+        publishable_key: string;
+      }>('/api/payments/initiate', {
         method: 'POST',
         body: JSON.stringify({
           booking_id: booking.id,
@@ -121,25 +181,36 @@ export default function PaymentScreen() {
         })
       });
       
-      // Navigate to success page after payment
-      router.push(`/payment/success?booking_id=${booking.id}`);
+      // Store the client secret and publishable key
+      setPaymentSecret(response.client_secret);
+      setPublishableKey(response.publishable_key);
+      
+      // For sandbox testing, we'll just assume payment success
+      // In a real implementation, you would use Stripe Elements to collect card details
+      // and confirm the payment using the client_secret
+      
+      // For now, simulate a successful payment
+      setTimeout(() => {
+        // Verify payment status
+        verifyPayment(response.client_secret.split('_secret_')[0]);
+      }, 2000);
+      
     } catch (err: any) {
       console.error('Payment error:', err);
+      setProcessing(false);
       Alert.alert(
         'Payment Failed',
         err.message || 'There was a problem processing your payment. Please try again.'
       );
-    } finally {
-      setProcessing(false);
     }
   };
 
-  if (loading || creatingBooking) {
+  if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#0056b3" />
         <Text style={styles.loadingText}>
-          {creatingBooking ? 'Creating booking...' : 'Loading booking details...'}
+          Loading booking details...
         </Text>
       </View>
     );
@@ -151,12 +222,20 @@ export default function PaymentScreen() {
         <Ionicons name="alert-circle-outline" size={48} color="#e53e3e" />
         <Text style={styles.errorTitle}>Error</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadBookingOrCreate}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => {}}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
   }
+
+  // Calculate total amount safely
+  const calculateTotal = () => {
+    if (!translator || !booking) return '0.00';
+    return (translator.hourly_rate * booking.duration_hours).toFixed(2);
+  };
+
+  const totalAmount = calculateTotal();
 
   return (
     <>
@@ -169,7 +248,7 @@ export default function PaymentScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="person-outline" size={20} color="#555" />
             <Text style={styles.infoLabel}>Translator:</Text>
-            <Text style={styles.infoValue}>{booking?.other_user_name || `Translator #${id}`}</Text>
+            <Text style={styles.infoValue}>{translator?.name}</Text>
           </View>
           
           <View style={styles.infoRow}>
@@ -180,8 +259,8 @@ export default function PaymentScreen() {
           
           <View style={styles.infoRow}>
             <Ionicons name="time-outline" size={20} color="#555" />
-            <Text style={styles.infoLabel}>Time:</Text>
-            <Text style={styles.infoValue}>{booking?.formatted_time || `${booking?.start_time} (${booking?.duration_hours} hours)`}</Text>
+            <Text style={styles.infoLabel}>Duration:</Text>
+            <Text style={styles.infoValue}>{`${booking?.duration_hours} hours`}</Text>
           </View>
           
           <View style={styles.infoRow}>
@@ -194,7 +273,7 @@ export default function PaymentScreen() {
           
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Amount:</Text>
-            <Text style={styles.totalAmount}>€{booking?.amount ? booking.amount.toFixed(2) : booking?.total_amount.toFixed(2)}</Text>
+            <Text style={styles.totalAmount}>€{totalAmount}</Text>
           </View>
         </View>
         
@@ -249,9 +328,7 @@ export default function PaymentScreen() {
           {processing ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.payButtonText}>
-              Pay €{booking?.amount?.toFixed(2) || booking?.total_amount.toFixed(2) || '0.00'}
-            </Text>
+            <Text style={styles.payButtonText}>Pay €{totalAmount}</Text>
           )}
         </TouchableOpacity>
         
@@ -263,6 +340,23 @@ export default function PaymentScreen() {
         >
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
+        
+        {/* Test Card Notice (only in development) */}
+        <View style={styles.testCardNotice}>
+          <Text style={styles.testCardTitle}>Sandbox Testing</Text>
+          <Text style={styles.testCardText}>
+            Use these test cards:
+          </Text>
+          <Text style={styles.testCardText}>
+            • Success: 4242 4242 4242 4242
+          </Text>
+          <Text style={styles.testCardText}>
+            • Auth Required: 4000 0025 0000 3155
+          </Text>
+          <Text style={styles.testCardText}>
+            • Decline: 4000 0000 0000 9995
+          </Text>
+        </View>
       </ScrollView>
     </>
   );
@@ -430,5 +524,25 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#0056b3',
     fontSize: 16,
+  },
+  testCardNotice: {
+    marginTop: 20,
+    marginBottom: 40,
+    padding: 16,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e1f0ff',
+  },
+  testCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0056b3',
+    marginBottom: 8,
+  },
+  testCardText: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 4,
   },
 });

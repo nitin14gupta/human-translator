@@ -377,16 +377,61 @@ class Booking(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relationships
+    rating = db.relationship('Rating', backref='booking', lazy=True, uselist=False)
+    payments = db.relationship('Payment', backref='booking', lazy=True)
+    
     def __init__(self, traveler_id, translator_id, date, start_time, duration_hours, location, total_amount, notes=None):
         self.traveler_id = traveler_id
         self.translator_id = translator_id
+        self.status = 'pending'
         self.date = date
         self.start_time = start_time
         self.duration_hours = duration_hours
         self.location = location
-        self.total_amount = total_amount
         self.notes = notes
-        self.status = 'pending'
+        self.total_amount = total_amount
+
+class Payment(db.Model):
+    __tablename__ = 'payments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False)
+    payment_id = db.Column(db.String(100), nullable=False, unique=True)
+    transaction_id = db.Column(db.String(100), unique=True)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False, default='USD')
+    status = db.Column(db.String(20), nullable=False)  # pending, completed, failed, refunded
+    payment_method = db.Column(db.String(20), nullable=False)
+    payment_intent_id = db.Column(db.String(255), unique=True)
+    client_secret = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    def __init__(self, booking_id, payment_id, amount, currency, status, payment_method, payment_intent_id=None, client_secret=None, transaction_id=None):
+        self.booking_id = booking_id
+        self.payment_id = payment_id
+        self.amount = amount
+        self.currency = currency
+        self.status = status
+        self.payment_method = payment_method
+        self.payment_intent_id = payment_intent_id
+        self.client_secret = client_secret
+        self.transaction_id = transaction_id
+    
+    def as_dict(self):
+        return {
+            'id': self.id,
+            'booking_id': self.booking_id,
+            'payment_id': self.payment_id,
+            'transaction_id': self.transaction_id,
+            'amount': float(self.amount),
+            'currency': self.currency,
+            'status': self.status,
+            'payment_method': self.payment_method,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'

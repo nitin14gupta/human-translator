@@ -575,9 +575,10 @@ POST /api/payments/initiate
 ```json
 {
     "payment_id": "pay_123",
-    "checkout_url": "https://payment-gateway.com/checkout/123",
     "amount": 51.00,
-    "currency": "USD"
+    "currency": "EUR",
+    "client_secret": "pi_1234_secret_5678",
+    "publishable_key": "pk_test_..."
 }
 ```
 
@@ -590,8 +591,7 @@ POST /api/payments/verify
 **Request Body:**
 ```json
 {
-    "payment_id": "pay_123",
-    "transaction_id": "tx_456"
+    "payment_intent_id": "pi_1234"
 }
 ```
 
@@ -604,6 +604,37 @@ POST /api/payments/verify
     "amount": 51.00
 }
 ```
+
+**Response (202) - Payment still processing:**
+```json
+{
+    "status": "pending",
+    "payment_intent_status": "processing",
+    "message": "Payment has not completed yet"
+}
+```
+
+##### Stripe Webhook (Server-to-Server)
+```http
+POST /api/payments/webhook
+```
+**Headers Required:** `Stripe-Signature`
+
+**Response (200):**
+```json
+{
+    "status": "success"
+}
+```
+
+##### Test Cards for Sandbox
+When testing payments in the sandbox environment, use these test card numbers:
+
+- **Success:** 4242 4242 4242 4242
+- **Authentication Required:** 4000 0025 0000 3155
+- **Payment Failed:** 4000 0000 0000 9995
+
+Use any future expiration date, any 3-digit CVC, and any postal code.
 
 ## Error Responses
 

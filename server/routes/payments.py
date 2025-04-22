@@ -1,41 +1,19 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import User, Booking, db
+from models import User, Booking, Payment, db
 from decimal import Decimal
 import logging
 import uuid
 from datetime import datetime, timedelta
 from sqlalchemy import func
+import stripe
+import os
 
 payments_bp = Blueprint('payments', __name__, url_prefix='/api/payments')
 
-class Payment:
-    """
-    Mock Payment Model - in production, you would use a real payment model
-    This is for demonstration purposes only
-    """
-    def __init__(self, booking_id, amount, currency, payment_method):
-        self.id = str(uuid.uuid4())
-        self.booking_id = booking_id
-        self.amount = amount
-        self.currency = currency
-        self.payment_method = payment_method
-        self.status = 'pending'
-        self.created_at = datetime.utcnow()
-    
-    def as_dict(self):
-        return {
-            'payment_id': self.id,
-            'booking_id': self.booking_id,
-            'amount': float(self.amount),
-            'currency': self.currency,
-            'status': self.status,
-            'payment_method': self.payment_method,
-            'created_at': self.created_at.isoformat()
-        }
-
-# In-memory storage for mock payments (replace with database in production)
-payments_store = {}
+# Setup Stripe with the API key from environment variables
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+stripe_publishable_key = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 
 # In-memory storage for mock payouts (replace with database in production)
 payouts_store = {}
@@ -43,7 +21,7 @@ payouts_store = {}
 @payments_bp.route('/initiate', methods=['POST'])
 @jwt_required()
 def initiate_payment():
-    """Initiate a payment for a booking"""
+    """Initiate a payment for a booking using Stripe"""
     try:
         data = request.get_json()
         
@@ -68,34 +46,55 @@ def initiate_payment():
         # Check if booking is in a valid state for payment
         if booking.status not in ['pending', 'confirmed']:
             return jsonify({'error': f'Cannot process payment for booking with status {booking.status}'}), 400
+
+        # Check if payment already exists for this booking
+        existing_payment = Payment.query.filter_by(booking_id=booking_id).first()
+        if existing_payment and existing_payment.status in ['completed', 'pending']:
+            return jsonify({'error': 'Payment already exists for this booking'}), 400
         
-        # Create a new payment (mock implementation)
-        payment = Payment(
-            booking_id=booking_id,
-            amount=booking.total_amount,
-            currency='EUR',
-            payment_method=payment_method
-        )
+        # Calculate amount in cents for Stripe (Stripe uses smallest currency unit)
+        amount_cents = int(float(booking.total_amount) * 100)
         
-        # Store payment in memory (replace with database in production)
-        payments_store[payment.id] = payment
-        
-        # In a real implementation, you would:
-        # 1. Create a payment intent with a payment processor (Stripe, PayPal, etc.)
-        # 2. Return checkout URL or client secret for frontend to complete payment
-        
-        # Update booking status to 'confirmed' if it was 'pending'
-        if booking.status == 'pending':
-            booking.status = 'confirmed'
+        # Create a payment intent with Stripe
+        try:
+            payment_intent = stripe.PaymentIntent.create(
+                amount=amount_cents,
+                currency="eur",
+                payment_method_types=["card"],
+                metadata={
+                    "booking_id": booking_id,
+                    "traveler_id": user_id,
+                    "translator_id": booking.translator_id
+                }
+            )
+            
+            # Create a new payment record in the database
+            payment = Payment(
+                booking_id=booking_id,
+                payment_id=str(uuid.uuid4()),  # Generate unique ID
+                amount=booking.total_amount,
+                currency="EUR",
+                status="pending",
+                payment_method=payment_method,
+                payment_intent_id=payment_intent.id,
+                client_secret=payment_intent.client_secret
+            )
+            
+            db.session.add(payment)
             db.session.commit()
-        
-        # Return payment details
-        return jsonify({
-            'payment_id': payment.id,
-            'amount': float(payment.amount),
-            'currency': payment.currency,
-            'checkout_url': f"https://example.com/checkout/{payment.id}"  # Mock URL
-        }), 200
+            
+            # Return payment details with client_secret for frontend to complete payment
+            return jsonify({
+                'payment_id': payment.payment_id,
+                'amount': float(payment.amount),
+                'currency': payment.currency,
+                'client_secret': payment_intent.client_secret,
+                'publishable_key': stripe_publishable_key
+            }), 200
+            
+        except stripe.error.StripeError as e:
+            logging.error(f"Stripe error: {str(e)}")
+            return jsonify({'error': str(e)}), 400
         
     except ValueError as e:
         logging.error(f"Value error in payment initiation: {str(e)}")
@@ -107,19 +106,18 @@ def initiate_payment():
 @payments_bp.route('/verify', methods=['POST'])
 @jwt_required()
 def verify_payment():
-    """Verify a payment (mock implementation)"""
+    """Verify a payment with Stripe"""
     try:
         data = request.get_json()
         
         # Validate required fields
-        if not all(k in data for k in ['payment_id']):
-            return jsonify({'error': 'Missing payment_id'}), 400
+        if not all(k in data for k in ['payment_intent_id']):
+            return jsonify({'error': 'Missing payment_intent_id'}), 400
         
-        payment_id = data['payment_id']
-        transaction_id = data.get('transaction_id', str(uuid.uuid4()))  # Generate if not provided
+        payment_intent_id = data['payment_intent_id']
         
-        # Find payment
-        payment = payments_store.get(payment_id)
+        # Find payment by payment_intent_id
+        payment = Payment.query.filter_by(payment_intent_id=payment_intent_id).first()
         
         if not payment:
             return jsonify({'error': 'Payment not found'}), 404
@@ -136,20 +134,97 @@ def verify_payment():
         if booking.traveler_id != int(user_id):
             return jsonify({'error': 'Unauthorized to verify this payment'}), 403
         
-        # Update payment status (in a real implementation, you would verify with payment processor)
-        payment.status = 'completed'
-        
-        # Return success response
-        return jsonify({
-            'status': 'success',
-            'booking_id': str(payment.booking_id),
-            'payment_id': payment.id,
-            'amount': float(payment.amount)
-        }), 200
+        # Retrieve payment intent from Stripe to check status
+        try:
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            
+            # Update payment status based on Stripe status
+            if payment_intent.status == 'succeeded':
+                payment.status = 'completed'
+                payment.transaction_id = payment_intent.id
+                
+                # Update booking status to confirmed
+                if booking.status == 'pending':
+                    booking.status = 'confirmed'
+                
+                db.session.commit()
+                
+                # Return success response
+                return jsonify({
+                    'status': 'success',
+                    'booking_id': booking.id,
+                    'payment_id': payment.payment_id,
+                    'amount': float(payment.amount)
+                }), 200
+            else:
+                return jsonify({
+                    'status': 'pending',
+                    'payment_intent_status': payment_intent.status,
+                    'message': 'Payment has not completed yet'
+                }), 202
+                
+        except stripe.error.StripeError as e:
+            logging.error(f"Stripe error: {str(e)}")
+            return jsonify({'error': str(e)}), 400
         
     except Exception as e:
         logging.error(f"Error verifying payment: {str(e)}")
         return jsonify({'error': 'Failed to verify payment'}), 500
+
+@payments_bp.route('/webhook', methods=['POST'])
+def stripe_webhook():
+    """Handle Stripe webhooks"""
+    try:
+        payload = request.get_data(as_text=True)
+        sig_header = request.headers.get('Stripe-Signature')
+        
+        # Get webhook secret from environment variables
+        endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+        
+        # If endpoint secret is not set, log the event for debugging
+        if not endpoint_secret:
+            logging.warning("Webhook secret not set, skipping signature verification")
+            data = request.get_json()
+            event = data
+        else:
+            # Verify webhook signature
+            try:
+                event = stripe.Webhook.construct_event(
+                    payload, sig_header, endpoint_secret
+                )
+            except ValueError as e:
+                logging.error(f"Invalid payload: {str(e)}")
+                return jsonify({'error': 'Invalid payload'}), 400
+            except stripe.error.SignatureVerificationError as e:
+                logging.error(f"Invalid signature: {str(e)}")
+                return jsonify({'error': 'Invalid signature'}), 400
+        
+        # Handle the event
+        if event['type'] == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']
+            
+            # Update payment status in the database
+            payment = Payment.query.filter_by(payment_intent_id=payment_intent['id']).first()
+            
+            if payment:
+                payment.status = 'completed'
+                payment.transaction_id = payment_intent['id']
+                
+                # Update booking status
+                booking = Booking.query.get(payment.booking_id)
+                if booking and booking.status == 'pending':
+                    booking.status = 'confirmed'
+                
+                db.session.commit()
+                
+                logging.info(f"Payment {payment.payment_id} completed via webhook")
+        
+        # Return a success response
+        return jsonify({'status': 'success'}), 200
+        
+    except Exception as e:
+        logging.error(f"Error handling webhook: {str(e)}")
+        return jsonify({'error': 'Webhook processing failed'}), 500
 
 @payments_bp.route('/history', methods=['GET'])
 @jwt_required()
