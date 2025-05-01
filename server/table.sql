@@ -19,7 +19,6 @@ CREATE TABLE password_reset_tokens (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-
 -- Store profiles for translators
 CREATE TABLE translator_profiles (
     id SERIAL PRIMARY KEY,
@@ -216,3 +215,23 @@ CREATE TRIGGER update_translator_payouts_updated_at
     BEFORE UPDATE ON translator_payouts
     FOR EACH ROW
     EXECUTE PROCEDURE update_updated_at_column();
+
+
+
+
+--select * from users
+--select * from translator_profiles
+-- select * from traveler_profiles
+-- select * from bookings
+-- select * from chat_messages
+-- select * from payments
+-- select * from translator_earnings
+-- select * from translator_payouts
+-- select * from ratings
+
+
+
+
+
+
+

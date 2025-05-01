@@ -109,8 +109,13 @@ export default function RequestsScreen() {
           onPress: async () => {
             try {
               setLoading(true);
-              // Update booking status to confirmed
-              await updateBooking(bookingId, { action: "reschedule" });
+              // Update booking status to confirmed using 'reschedule' action
+              // The backend will handle this action to change status to confirmed
+              await updateBooking(bookingId, { 
+                action: "reschedule" 
+                // We use reschedule since the API supports only 'cancel', 'complete', 'reschedule'
+                // The backend logic for 'reschedule' will change pending bookings to confirmed
+              });
               Alert.alert("Success", "Request accepted successfully!");
               // Refresh the requests list
               await fetchRequests(activeTab);
@@ -141,7 +146,7 @@ export default function RequestsScreen() {
           onPress: async () => {
             try {
               setLoading(true);
-              // Update booking status to cancelled
+              // Update booking status to cancelled using 'cancel' action
               await updateBooking(bookingId, { action: "cancel" });
               Alert.alert("Success", "Request declined successfully.");
               // Refresh the requests list
@@ -233,7 +238,7 @@ export default function RequestsScreen() {
                   <View className="flex-row justify-between items-start mb-3">
                     <View>
                       <Text className="text-lg font-semibold text-gray-900">
-                        {request.other_user_name}
+                        {request.other_user_name || 'Unknown Traveler'}
                       </Text>
                       <View className="flex-row items-center mt-1">
                         <Ionicons name="time-outline" size={14} color="#6B7280" />
@@ -291,7 +296,7 @@ export default function RequestsScreen() {
                     <View className="flex-row justify-end">
                       <TouchableOpacity
                         className="bg-blue-50 px-4 py-2 rounded-full"
-                        onPress={() => router.push(`/(translator)/chat/${request.other_user_id}`)}
+                        onPress={() => router.push(`/(translator)/${request.other_user_id}`)}
                       >
                         <Text className="text-blue-600 font-medium">Message Traveler</Text>
                       </TouchableOpacity>

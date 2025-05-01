@@ -200,10 +200,15 @@ export default function ChatDetailScreen() {
         // Mark all messages as read
         await markConversationAsRead(conversationId);
 
-        // Fetch translator profile (simplified for now)
+        // Get the name of the translator from messages where sender is not current user
+        const translatorMessage = response.messages.find(msg => 
+          msg.sender_id.toString() !== userId?.toString()
+        );
+        
+        // Fetch translator profile
         setTranslator({
           id: conversationId,
-          name: "Translator", // This would come from the API
+          name: translatorMessage ? translatorMessage.sender_name : "Translator",
           avatar: null,
           isActive: true,
           lastSeen: new Date().toISOString(),
@@ -446,7 +451,7 @@ export default function ChatDetailScreen() {
             ) : (
               <View className="w-10 h-10 rounded-full bg-blue-300 items-center justify-center">
                 <Text className="text-blue-800 font-bold text-lg">
-                  {translator?.name.charAt(0) || '?'}
+                  {translator?.name ? translator.name.charAt(0).toUpperCase() : '?'}
                 </Text>
               </View>
             )}

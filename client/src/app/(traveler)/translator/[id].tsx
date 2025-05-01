@@ -247,7 +247,7 @@ export default function TranslatorDetailScreen() {
 
               <View className="items-center px-4">
                 <Text className="text-white font-bold">
-                  €{translator.hourly_rate.toFixed(2)}
+                  €{( translator.hourly_rate* 1.9).toFixed(2)}
                 </Text>
                 <Text className="text-blue-100 text-xs mt-1">Hourly</Text>
               </View>

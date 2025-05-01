@@ -419,49 +419,6 @@ export default function TranslatorChatScreen() {
         />
       )}
       
-      {/* Quick Actions */}
-      <View style={styles.quickActionsContainer}>
-        <BlurView intensity={80} tint="light" style={styles.blurView}>
-          <View style={styles.quickActionsContent}>
-            <View style={styles.quickActionsHeader}>
-              <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-            </View>
-            
-            <View style={styles.quickActionsButtons}>
-              <TouchableOpacity style={styles.quickActionButton}>
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="mail" size={20} color="#0066CC" />
-                </View>
-                <Text style={styles.quickActionText}>Templates</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => router.push('/(tabs)/translator/requests')}
-              >
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="calendar" size={20} color="#0066CC" />
-                </View>
-                <Text style={styles.quickActionText}>Requests</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.quickActionButton}>
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="filter" size={20} color="#0066CC" />
-                </View>
-                <Text style={styles.quickActionText}>Filter</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.quickActionButton}>
-                <View style={styles.quickActionIcon}>
-                  <Ionicons name="person-add" size={20} color="#0066CC" />
-                </View>
-                <Text style={styles.quickActionText}>New Chat</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </BlurView>
-      </View>
     </View>
   );
 }

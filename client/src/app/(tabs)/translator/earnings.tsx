@@ -16,7 +16,7 @@ import { LineChart } from "react-native-chart-kit";
 import { StatusBar } from "expo-status-bar";
 import { getEarningsSummary, getEarningsTransactions, withdrawEarnings, Transaction, EarningsSummary } from "../../../services/api";
 
-export default function EarningsScreen() {
+export default function EarningsScreen() {  
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);

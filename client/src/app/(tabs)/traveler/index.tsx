@@ -14,6 +14,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { apiFetch } from "../../../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Language {
   language_code: string;
@@ -24,6 +25,7 @@ interface Language {
 interface Translator {
   id: string;
   full_name: string;
+  name?: string; // Additional field from detail API
   photo_url: string;
   languages: Language[];
   location: string;
@@ -41,6 +43,44 @@ interface SearchResponse {
   per_page: number;
   pages: number;
 }
+
+// Avatar component that shows first letter when no image is available
+const AvatarImage = ({ translator, size = 20 }: { translator: Translator, size?: number }) => {
+  // Get the name from either full_name or name property
+  const displayName = translator?.full_name || translator?.name || 'Unknown';
+  const firstLetter = displayName.charAt(0).toUpperCase();
+  
+  if (translator?.photo_url) {
+    return (
+      <Image
+        source={{ uri: translator.photo_url }}
+        className="w-20 h-20 rounded-xl"
+        defaultSource={require('@/assets/images/icon.png')}
+        onError={(e) => {
+          console.log('Error loading image:', e.nativeEvent.error);
+        }}
+      />
+    );
+  }
+  
+  // Fallback to letter avatar
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 6,
+        backgroundColor: '#1a73e8',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ color: 'white', fontSize: size / 2.5, fontWeight: 'bold' }}>
+        {firstLetter}
+      </Text>
+    </View>
+  );
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -75,7 +115,34 @@ export default function HomeScreen() {
 
       // Add null check for the response and translators array
       if (response && Array.isArray(response.translators)) {
-        setTranslators(response.translators);
+        // Process translators to ensure they have names
+        const processedTranslators = await Promise.all(response.translators.map(
+          async (translator) => {
+            // If full_name is missing, try to get cached details or fetch them
+            if (!translator.full_name || translator.full_name.trim() === '') {
+              const cachedName = await AsyncStorage.getItem(`translator_name_${translator.id}`);
+              
+              if (cachedName) {
+                return { ...translator, full_name: cachedName };
+              }
+              
+              // Only fetch details for translators with missing names
+              try {
+                const details = await apiFetch<Translator>(`/api/translators/${translator.id}`);
+                if (details.name) {
+                  // Cache the name for future use
+                  await AsyncStorage.setItem(`translator_name_${translator.id}`, details.name);
+                  return { ...translator, full_name: details.name };
+                }
+              } catch (error) {
+                console.error(`Error fetching details for translator ${translator.id}:`, error);
+              }
+            }
+            return translator;
+          }
+        ));
+        
+        setTranslators(processedTranslators);
         setCurrentPage(page);
         return response;
       } else {
@@ -118,8 +185,14 @@ export default function HomeScreen() {
 
   // Helper function to truncate long text
   const truncateText = (text: string, maxLength: number) => {
+    if (!text) return "Unknown";
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  };
+
+  // Helper function to get display name for a translator
+  const getTranslatorName = (translator: Translator) => {
+    return translator?.full_name || translator?.name || 'Unknown';
   };
 
   return (
@@ -205,14 +278,7 @@ export default function HomeScreen() {
                 <View className="flex-row">
                   {/* Translator Photo */}
                   <View className="relative">
-                    <Image
-                      source={{ uri: translator.photo_url }}
-                      className="w-20 h-20 rounded-xl"
-                      defaultSource={require('@/assets/images/icon.png')}
-                      onError={(e) => {
-                        console.log('Error loading image:', e.nativeEvent.error);
-                      }}
-                    />
+                    <AvatarImage translator={translator} size={80} />
                     {translator.is_available && (
                       <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
                     )}
@@ -223,7 +289,7 @@ export default function HomeScreen() {
                     <View>
                       {/* Name and Location */}
                       <Text className="text-lg font-semibold text-gray-900">
-                        {translator?.full_name ? truncateText(translator.full_name, 20) : 'Unknown'}
+                        {truncateText(getTranslatorName(translator), 20)}
                       </Text>
 
                       <View className="flex-row items-center mt-1">
@@ -279,7 +345,7 @@ export default function HomeScreen() {
                         </View>
 
                         <Text className="text-blue-600 font-bold">
-                          €{translator?.hourly_rate ? translator.hourly_rate.toFixed(2) : '0.00'}/hr
+                          €{translator?.hourly_rate ? (translator.hourly_rate * 1.9).toFixed(2) : '0.00'}/hr
                         </Text>
                       </View>
                     </View>

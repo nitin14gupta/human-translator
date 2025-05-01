@@ -211,7 +211,9 @@ export default function ChatDetailScreen() {
         // In a real implementation, you would get this from API
         setTraveler({
           id: conversationId,
-          name: "Traveler",
+          name: response.messages.length > 0 && response.messages[0].sender_id.toString() !== userId.toString() 
+            ? response.messages[0].sender_name 
+            : "Traveler",
           photo_url: null,
           is_online: false
         });
@@ -437,7 +439,7 @@ export default function ChatDetailScreen() {
                     {traveler.photo_url ? (
                       <Image source={{ uri: traveler.photo_url }} style={styles.avatarImage} />
                     ) : (
-                      <Text style={styles.avatarText}>{traveler.name[0]}</Text>
+                      <Text style={styles.avatarText}>{traveler.name ? traveler.name.charAt(0).toUpperCase() : "T"}</Text>
                     )}
                   </View>
                   {traveler.is_online && <View style={styles.activeIndicator} />}

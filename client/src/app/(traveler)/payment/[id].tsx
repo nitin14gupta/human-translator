@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getBookingById, createBooking, apiFetch, Booking, CreateBookingData } from '@/src/services/api';
+import { createBooking, apiFetch, CreateBookingData } from '@/src/services/api';
 
 interface PaymentMethod {
   id: string;
@@ -232,7 +232,7 @@ export default function PaymentScreen() {
   // Calculate total amount safely
   const calculateTotal = () => {
     if (!translator || !booking) return '0.00';
-    return (translator.hourly_rate * booking.duration_hours).toFixed(2);
+    return (translator.hourly_rate * 1.9 * booking.duration_hours).toFixed(2);
   };
 
   const totalAmount = calculateTotal();

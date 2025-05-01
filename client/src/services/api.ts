@@ -358,7 +358,21 @@ export interface UpdateBookingData {
 
 export const updateBooking = async (bookingId: string, updateData: UpdateBookingData): Promise<Booking> => {
   try {
-    const headers = await createAuthHeaders();
+    console.log(`Updating booking ${bookingId} with data:`, updateData);
+    
+    // Ensure we have a valid auth token
+    const token = await getToken();
+    if (!token) {
+      throw new Error('Authentication required - please log in');
+    }
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token.trim()}`
+    };
+    
+    // Make the API call with explicit headers
     return await apiFetch(`/api/bookings/${bookingId}`, {
       method: 'PUT',
       headers,

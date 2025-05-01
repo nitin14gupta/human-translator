@@ -48,6 +48,9 @@ def get_user_bookings():
                 (Booking.status.in_(['completed', 'cancelled'])) |
                 ((Booking.status.in_(['pending', 'confirmed'])) & (Booking.date < date.today()))
             )
+        elif status == 'pending':
+            # Add explicit filter for pending status
+            query = query.filter(Booking.status == 'pending')
         
         # Order by date, newest first
         query = query.order_by(Booking.date.desc(), Booking.start_time.desc())
@@ -202,24 +205,55 @@ def update_booking(booking_id):
     """Update a booking (cancel, reschedule, etc.)"""
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        logging.info(f"User {user_id} attempting to update booking {booking_id}")
         
+        # Convert user_id to int (JWT may store it as string)
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            logging.error(f"Failed to convert user_id {user_id} to integer")
+            return jsonify({'error': 'Invalid user ID'}), 400
+        
+        user = User.query.get(user_id)
         if not user:
+            logging.error(f"User {user_id} not found")
             return jsonify({'error': 'User not found'}), 404
         
-        # Get booking
+        # Get booking with detailed error checking
         booking = Booking.query.get(booking_id)
         if not booking:
+            logging.error(f"Booking {booking_id} not found")
             return jsonify({'error': 'Booking not found'}), 404
         
-        # Check if user owns the booking
-        if user.is_traveler and booking.traveler_id != user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        elif not user.is_traveler and booking.translator_id != user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
+        # Log all relevant IDs for debugging
+        logging.info(f"BOOKING INFO: ID={booking_id}, traveler_id={booking.traveler_id}, translator_id={booking.translator_id}, status={booking.status}")
+        logging.info(f"USER INFO: ID={user_id}, is_traveler={user.is_traveler}")
+        
+        # Check if the user is related to the booking (simpler check)
+        if booking.traveler_id == user_id:
+            logging.info(f"User {user_id} is the traveler of booking {booking_id}")
+            is_authorized = True
+        elif booking.translator_id == user_id:
+            logging.info(f"User {user_id} is the translator of booking {booking_id}")
+            is_authorized = True
+        else:
+            logging.error(f"User {user_id} is not related to booking {booking_id}")
+            is_authorized = False
+        
+        if not is_authorized:
+            return jsonify({'error': f'Unauthorized - user {user_id} is not related to booking {booking_id}'}), 403
         
         data = request.get_json()
+        if not data:
+            logging.error("No JSON data in request")
+            return jsonify({'error': 'No data provided'}), 400
+            
         action = data.get('action')
+        logging.info(f"Requested action: {action}")
+        
+        if not action:
+            logging.error("No action specified in request")
+            return jsonify({'error': 'No action specified'}), 400
         
         # Handle different actions
         if action == 'cancel':
@@ -228,6 +262,7 @@ def update_booking(booking_id):
                 return jsonify({'error': f'Cannot cancel booking with status {booking.status}'}), 400
             
             booking.status = 'cancelled'
+            logging.info(f"Booking {booking_id} cancelled by user {user_id}")
             
         elif action == 'complete':
             # Only confirmed bookings can be completed
@@ -235,56 +270,76 @@ def update_booking(booking_id):
                 return jsonify({'error': f'Cannot complete booking with status {booking.status}'}), 400
             
             booking.status = 'completed'
+            logging.info(f"Booking {booking_id} marked as completed by user {user_id}")
             
         elif action == 'reschedule':
             # Only pending or confirmed bookings can be rescheduled
             if booking.status not in ['pending', 'confirmed']:
                 return jsonify({'error': f'Cannot reschedule booking with status {booking.status}'}), 400
             
-            # Update booking date and time
+            # For translators accepting a pending request, change status to confirmed
+            if not user.is_traveler and booking.status == 'pending':
+                booking.status = 'confirmed'
+                logging.info(f"Translator {user.id} accepted booking {booking_id}")
+            
+            # Update booking date and time if provided
             if 'date' in data:
                 booking.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+                logging.info(f"Updated booking date to {booking.date}")
             
             if 'start_time' in data:
                 hours, minutes = map(int, data['start_time'].split(':'))
                 booking.start_time = time(hour=hours, minute=minutes)
+                logging.info(f"Updated booking time to {booking.start_time}")
             
             if 'duration_hours' in data:
                 booking.duration_hours = int(data['duration_hours'])
+                logging.info(f"Updated booking duration to {booking.duration_hours} hours")
             
             if 'location' in data:
                 booking.location = data['location']
+                logging.info(f"Updated booking location to {booking.location}")
             
         else:
+            logging.error(f"Invalid action: {action}")
             return jsonify({'error': 'Invalid action'}), 400
         
         # Update notes if provided
         if 'notes' in data:
             booking.notes = data['notes']
+            logging.info(f"Updated booking notes")
         
-        db.session.commit()
-        
-        return jsonify({
-            'id': booking.id,
-            'traveler_id': booking.traveler_id,
-            'translator_id': booking.translator_id,
-            'date': booking.date.strftime('%Y-%m-%d'),
-            'time': booking.start_time.strftime('%H:%M'),
-            'duration_hours': booking.duration_hours,
-            'location': booking.location,
-            'notes': booking.notes,
-            'status': booking.status,
-            'amount': float(booking.total_amount),
-            'created_at': booking.created_at.isoformat(),
-            'updated_at': booking.updated_at.isoformat()
-        }), 200
+        try:
+            db.session.commit()
+            logging.info(f"Booking {booking_id} successfully updated")
+            
+            return jsonify({
+                'id': booking.id,
+                'traveler_id': booking.traveler_id,
+                'translator_id': booking.translator_id,
+                'date': booking.date.strftime('%Y-%m-%d'),
+                'time': booking.start_time.strftime('%H:%M'),
+                'duration_hours': booking.duration_hours,
+                'location': booking.location,
+                'notes': booking.notes,
+                'status': booking.status,
+                'amount': float(booking.total_amount),
+                'created_at': booking.created_at.isoformat(),
+                'updated_at': booking.updated_at.isoformat()
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Database error when updating booking: {str(e)}")
+            return jsonify({'error': 'Failed to update booking in database'}), 500
         
     except ValueError as e:
+        logging.error(f"Value error when updating booking: {str(e)}")
         return jsonify({'error': f'Invalid input: {str(e)}'}), 400
     except Exception as e:
         db.session.rollback()
         logging.error(f"Error updating booking: {str(e)}")
-        return jsonify({'error': 'Failed to update booking'}), 500
+        return jsonify({'error': 'Failed to update booking: ' + str(e)}), 500
 
 @bookings_bp.route('/<int:booking_id>', methods=['GET'])
 @jwt_required()

@@ -256,50 +256,6 @@ export default function DashboardScreen() {
         </ScrollView>
       )}
 
-      {/* Quick Actions */}
-      <View className="bg-white border-t border-gray-200 px-4 py-4">
-        <View className="flex-row justify-around">
-          <TouchableOpacity 
-            className="items-center"
-            onPress={() => router.push("/translator/requests")}
-          >
-            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
-              <Ionicons name="calendar" size={24} color="#1a73e8" />
-            </View>
-            <Text className="text-sm text-gray-600">New Request</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            className="items-center"
-            onPress={() => router.push("/translator/chat")}
-          >
-            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
-              <Ionicons name="chatbubbles" size={24} color="#1a73e8" />
-            </View>
-            <Text className="text-sm text-gray-600">Messages</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            className="items-center"
-            onPress={() => router.push("/translator/earnings")}
-          >
-            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
-              <Ionicons name="wallet" size={24} color="#1a73e8" />
-            </View>
-            <Text className="text-sm text-gray-600">Earnings</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            className="items-center"
-            onPress={() => router.push("/translator/profile")}
-          >
-            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-1">
-              <Ionicons name="settings" size={24} color="#1a73e8" />
-            </View>
-            <Text className="text-sm text-gray-600">Settings</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
     </View>
   );
 }
